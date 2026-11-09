@@ -207,6 +207,7 @@
                         <option value="BSD">BSD</option>
                         <option value="AB">AB</option>
                         <option value="SMG">SMG</option>
+                        <option value="SULLAIR">SULLAIR</option>
                         <option value="OTRO">Otra Empresa</option>
                     </select>
                 </div>
@@ -214,16 +215,16 @@
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tipo de Equipo:</label>
                     <select id="nuevo-tipo" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="Camión">Camión</option>
-                        <option value="Excavadora">Excavadora</option>
-                        <option value="Cargadora">Cargadora</option>
+                        <option value="Camión Combustible">Camión Combustible</option>
+                        <option value="Camión Lubricante">Camión Lubricante</option>
                         <option value="Camión Regador">Camión Regador</option>
+                        <option value="Cargadora">Cargadora</option>
+                        <option value="Excavadora Hidráulica">Excavadora Hidráulica</option>
                         <option value="Motoniveladora">Motoniveladora</option>
                         <option value="Rodillo">Rodillo</option>
                         <option value="Topadora">Topadora</option>
                         <option value="Combi">Combi</option>
-                        <option value="Generador">Generador</option>
-                        <option value="Manipuladora">Manipuladora</option>
-                        <option value="Luminaria">Luminaria</option>
+                        <option value="Manipulador">Manipulador</option>
                     </select>
                 </div>
             </div>
@@ -272,107 +273,96 @@
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
 
         const equiposEstructura = {
-            "Excavadoras": {
-                "Excavadora": [
-                    { interno: "K051", empresa: "AB" },
-                    { interno: "EC4800L", empresa: "BSD" },
-                    { interno: "M41", empresa: "SMG" },
-                    { interno: "M-43", empresa: "SMG" }
-                ],
-                "Cargadora": [
-                    { interno: "K067", empresa: "AB" },
-                    { interno: "sin interno (AF 144 TX)", empresa: "BSD" },
-                    { interno: "M35", empresa: "SMG" },
-                    { interno: "K056", empresa: "AB" },
-                    { interno: "sin interno", empresa: "BSD" }
-                ]
-            },
             "Camiones": {
-                "Camión": [
-                    { interno: "C33", empresa: "SMG" },
-                    { interno: "C32", empresa: "SMG" },
-                    { interno: "C34", empresa: "SMG" },
-                    { interno: "INT-253 (23)", empresa: "BSD" },
-                    { interno: "INT-254 (27)", empresa: "BSD" },
-                    { interno: "C-30", empresa: "SMG" },
-                    { interno: "C31", empresa: "SMG" },
+                "Camion Zoom": [
                     { interno: "C044", empresa: "AB" },
                     { interno: "C030", empresa: "AB" },
+                    { interno: "INT-284", empresa: "BSD" },
+                    { interno: "ZOOM-02", empresa: "BSD" }
+                ],
+                "Camion Sany": [
+                    { interno: "INT-253 (23)", empresa: "BSD" },
+                    { interno: "INT-254 (27)", empresa: "BSD" },
                     { interno: "11", empresa: "BSD" },
                     { interno: "INT-255 (17)", empresa: "BSD" },
                     { interno: "INT-271 (42)", empresa: "BSD" },
                     { interno: "INT-252", empresa: "BSD" },
-                    { interno: "INT-273 (18)", empresa: "BSD" },
-                    { interno: "INT-284", empresa: "BSD" },
-                    { interno: "ZOOM-02", empresa: "BSD" },
+                    { interno: "INT-273 (18)", empresa: "BSD" }
+                ],
+                "Camion": [
+                    { interno: "C33", empresa: "SMG" },
+                    { interno: "C32", empresa: "SMG" },
+                    { interno: "C34", empresa: "SMG" },
+                    { interno: "C31", empresa: "SMG" },
                     { interno: "C18", empresa: "SMG" },
                     { interno: "C25", empresa: "SMG" }
+                ],
+                "Camion Combustible": [
+                    { interno: "CA07", empresa: "SMG" }
+                ],
+                "Camion Lubricante": [
+                    { interno: "INT-242", empresa: "BSD" }
                 ]
             },
             "Cisternas": {
-                "Camión Regador": [
+                "Camion Regador": [
+                    { interno: "11", empresa: "BSD" },
+                    { interno: "sin interno (AF 144 TX)", empresa: "BSD" },
                     { interno: "INT-209 (AC 429 QJ)", empresa: "BSD" },
-                    { interno: "CM 66", empresa: "AB" },
-                    { interno: "11", empresa: "AB" },
-                    { interno: "B012 (AC 043 SL)", empresa: "AB" },
-                    { interno: "AH 282 NN", empresa: "AB" },
-                    { interno: "B030 (AF 529 JL)", empresa: "AB" },
                     { interno: "INT-210 (AC 429 QH)", empresa: "BSD" },
-                    { interno: "C17 (AD 210 GD)", empresa: "SMG" }
+                    { interno: "B012", empresa: "AB" },
+                    { interno: "B030", empresa: "AB" },
+                    { interno: "C-30", empresa: "SMG" },
+                    { interno: "C17", empresa: "SMG" }
+                ],
+                "Camion Regador Semi": [
+                    { interno: "AH 282 NN", empresa: "AB" }
                 ]
             },
-            "Combustible": {
-                "Camión Combustible / Lubricador": [
-                    { interno: "AH 162 HH", empresa: "SMG" },
-                    { interno: "INT-242", empresa: "BSD" }
+            "Excavadoras": {
+                "Cargadora": [
+                    { interno: "K056", empresa: "AB" },
+                    { interno: "sin interno", empresa: "BSD" },
+                    { interno: "K067", empresa: "AB" },
+                    { interno: "M35", empresa: "SMG" }
+                ],
+                "Excavadora Hidráulica": [
+                    { interno: "K051", empresa: "AB" },
+                    { interno: "EC4800L", empresa: "BSD" },
+                    { interno: "M-43", empresa: "SMG" },
+                    { interno: "M41", empresa: "SMG" },
+                    { interno: "DOOSAN", empresa: "BSD" }
                 ]
             },
             "Viales": {
                 "Motoniveladora": [
-                    { interno: "INT-351", empresa: "BSD" },
-                    { interno: "M38", empresa: "SMG" },
                     { interno: "K004", empresa: "AB" },
+                    { interno: "INT-351", empresa: "BSD" },
                     { interno: "INT-356", empresa: "BSD" },
                     { interno: "INT-370", empresa: "BSD" },
-                    { interno: "851", empresa: "BSD" },
+                    { interno: "M38", empresa: "SMG" },
                     { interno: "M-28", empresa: "SMG" }
                 ],
                 "Rodillo": [
-                    { interno: "K041", empresa: "AB" },
                     { interno: "sin interno", empresa: "BSD" },
                     { interno: "INT-331", empresa: "BSD" },
                     { interno: "INT-369", empresa: "BSD" },
+                    { interno: "K041", empresa: "AB" },
+                    { interno: "M29", empresa: "SMG" },
                     { interno: "M3", empresa: "BSD" },
-                    { interno: "sin interno", empresa: "BSD" },
-                    { interno: "M29", empresa: "SMG" }
+                    { interno: "sin interno", empresa: "SULLAIR" }
                 ],
                 "Topadora": [
                     { interno: "sin interno", empresa: "BSD" }
                 ]
             },
             "Livianos": {
-                "Manipuladora": [
-                    { interno: "25", empresa: "BSD" }
-                ],
                 "Combi": [
-                    { interno: "2", empresa: "AB" },
                     { interno: "1", empresa: "AB" },
                     { interno: "AG 807 LO", empresa: "AB" }
-                ]
-            },
-            "EquiposAuxiliares": {
-                "Generador": [
-                    { interno: "6", empresa: "AB" }
                 ],
-                "Luminaria": [
-                    { interno: "sin interno", empresa: "AB" },
-                    { interno: "2", empresa: "AB" },
-                    { interno: "??", empresa: "AB" },
-                    { interno: "81", empresa: "AB" },
-                    { interno: "82", empresa: "AB" },
-                    { interno: "83", empresa: "AB" },
-                    { interno: "85", empresa: "AB" },
-                    { interno: "sin interno (Alquiler)", empresa: "AB" }
+                "Manipulador": [
+                    { interno: "25", empresa: "BSD" }
                 ]
             }
         };
@@ -381,16 +371,14 @@
             const n = sub.toLowerCase();
             if (n.includes("excavadora")) return "fa-bucket";
             if (n.includes("cargadora")) return "fa-dumpster";
-            if (n.includes("camión") || n.includes("camion")) return "fa-truck-field";
+            if (n.includes("camion") || n.includes("camión")) return "fa-truck-field";
             if (n.includes("regador")) return "fa-faucet-drip";
-            if (n.includes("combustible") || n.includes("lubricador")) return "fa-gas-pump";
+            if (n.includes("combustible") || n.includes("lubricante")) return "fa-gas-pump";
             if (n.includes("motoniveladora")) return "fa-road";
             if (n.includes("rodillo")) return "fa-compact-disc";
             if (n.includes("topadora")) return "fa-shield-halved";
-            if (n.includes("manipuladora")) return "fa-boxes-packing";
+            if (n.includes("manipulador")) return "fa-boxes-packing";
             if (n.includes("combi")) return "fa-bus";
-            if (n.includes("generador")) return "fa-bolt";
-            if (n.includes("luminaria")) return "fa-lightbulb";
             return "fa-truck-monster";
         }
 
@@ -399,6 +387,7 @@
             if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-300", shadow: "shadow-blue-600/50" };
             if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-300", shadow: "shadow-red-600/50" };
             if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-300", shadow: "shadow-emerald-600/50" };
+            if (emp.includes("SULLAIR")) return { bg: "bg-amber-600", border: "border-amber-400", text: "text-amber-300", shadow: "shadow-amber-600/50" };
             return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", shadow: "shadow-slate-700/50" };
         }
 
@@ -515,13 +504,15 @@
                 return;
             }
 
-            let categoriaPrincipal = "EquiposAuxiliares";
-            if (tipoInput === "Excavadora" || tipoInput === "Cargadora") {
+            let categoriaPrincipal = "Camiones";
+            if (tipoInput.includes("Excavadora") || tipoInput.includes("Cargadora")) {
                 categoriaPrincipal = "Excavadoras";
-            } else if (tipoInput.includes("Camión")) {
-                categoriaPrincipal = "Camiones";
-            } else if (tipoInput === "Motoniveladora" || tipoInput === "Rodillo" || tipoInput === "Topadora") {
+            } else if (tipoInput.includes("Regador")) {
+                categoriaPrincipal = "Cisternas";
+            } else if (tipoInput.includes("Motoniveladora") || tipoInput.includes("Rodillo") || tipoInput.includes("Topadora")) {
                 categoriaPrincipal = "Viales";
+            } else if (tipoInput.includes("Combi") || tipoInput.includes("Manipulador")) {
+                categoriaPrincipal = "Livianos";
             }
 
             if (!equiposEstructura[categoriaPrincipal][tipoInput]) {
