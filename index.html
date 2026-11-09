@@ -199,7 +199,7 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Número de Interno / Nombre:</label>
-                    <input type="text" id="nuevo-interno" placeholder="Ej: C-99 o Camioneta 05" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <input type="text" id="nuevo-interno" placeholder="Ej: K067 o C044" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Empresa:</label>
@@ -213,12 +213,15 @@
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tipo de Equipo:</label>
                     <select id="nuevo-tipo" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="Camión Fuera de Ruta">Camión Fuera de Ruta</option>
+                        <option value="Pala Cargadora">Pala Cargadora</option>
                         <option value="Excavadora">Excavadora</option>
+                        <option value="Camión Fuera de Ruta">Camión Fuera de Ruta</option>
+                        <option value="Camión Volcador">Camión Volcador</option>
                         <option value="Camión Regador">Camión Regador</option>
                         <option value="Camioneta">Camioneta</option>
                         <option value="Rodillo Compactador">Rodillo Compactador</option>
                         <option value="Motoniveladora">Motoniveladora</option>
+                        <option value="Topadora">Topadora</option>
                         <option value="Equipo Auxiliar">Equipo Auxiliar</option>
                     </select>
                 </div>
@@ -521,7 +524,7 @@
             const nuevoId = `custom_eq_${Date.now()}`;
             const nuevoEquipo = {
                 id: nuevoId,
-                cat: "EquiposAuxiliares",
+                cat: tipoInput.includes('Pala') || tipoInput.includes('Excavadora') ? "Excavadoras" : "EquiposAuxiliares",
                 sub: tipoInput,
                 interno: internoInput,
                 empresa: empresaInput,
@@ -529,14 +532,13 @@
             };
 
             flotaMaster.push(nuevoEquipo);
-            // Ubicarlo por defecto en el centro del plano (50%, 50%)
             stateEquipments[nuevoId] = { x: 50, y: 50, estado: 'operativo' };
 
             cerrarModalAgregarEquipo();
             document.getElementById('nuevo-interno').value = '';
             renderSidebar();
             renderPlacedEquipments();
-            showToast(`✅ Equipo ${internoInput} agregado y ubicado en el plano`);
+            showToast(`✅ ${tipoInput} (${internoInput}) agregado y ubicado en el plano`);
         }
 
         // 1. CARGAR POSICIONES DESDE LA NUBE (JSONBin)
