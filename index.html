@@ -411,23 +411,26 @@
             return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", shadow: "shadow-slate-700/50" };
         }
 
-        const flotaMaster = [];
-        let idCounter = 1;
+        let flotaMaster = [];
 
-        Object.keys(equiposEstructura).forEach(cat => {
-            Object.keys(equiposEstructura[cat]).forEach(sub => {
-                equiposEstructura[cat][sub].forEach(eq => {
-                    flotaMaster.push({
-                        id: `eq_${idCounter++}`,
-                        cat: cat,
-                        sub: sub,
-                        interno: eq.interno,
-                        empresa: eq.empresa,
-                        icono: getIconForEquipo(sub)
+        function reconstruirFlotaMaster() {
+            flotaMaster.length = 0;
+            let idCounter = 1;
+            Object.keys(equiposEstructura).forEach(cat => {
+                Object.keys(equiposEstructura[cat]).forEach(sub => {
+                    equiposEstructura[cat][sub].forEach(eq => {
+                        flotaMaster.push({
+                            id: `eq_${idCounter++}`,
+                            cat: cat,
+                            sub: sub,
+                            interno: eq.interno,
+                            empresa: eq.empresa,
+                            icono: getIconForEquipo(sub)
+                        });
                     });
                 });
             });
-        });
+        }
 
         let stateEquipments = {};
 
@@ -521,24 +524,38 @@
                 return;
             }
 
-            const nuevoId = `custom_eq_${Date.now()}`;
-            const nuevoEquipo = {
-                id: nuevoId,
-                cat: tipoInput.includes('Pala') || tipoInput.includes('Excavadora') ? "Excavadoras" : "EquiposAuxiliares",
-                sub: tipoInput,
-                interno: internoInput,
-                empresa: empresaInput,
-                icono: getIconForEquipo(tipoInput)
-            };
+            // Determinar categoría principal según el tipo seleccionado
+            let categoriaPrincipal = "EquiposAuxiliares";
+            if (tipoInput === "Pala Cargadora" || tipoInput === "Excavadora") {
+                categoriaPrincipal = "Excavadoras";
+            } else if (tipoInput.includes("Camión")) {
+                categoriaPrincipal = "Camiones";
+            }
 
-            flotaMaster.push(nuevoEquipo);
-            stateEquipments[nuevoId] = { x: 50, y: 50, estado: 'operativo' };
+            // Asegurar que exista la subcategoría en la estructura
+            if (!equiposEstructura[categoriaPrincipal][tipoInput]) {
+                equiposEstructura[categoriaPrincipal][tipoInput] = [];
+            }
+
+            // Añadir a la estructura base para que persista al filtrar
+            equiposEstructura[categoriaPrincipal][tipoInput].push({
+                interno: internoInput,
+                empresa: empresaInput
+            });
+
+            reconstruirFlotaMaster();
+            
+            // Encontrar el ID generado para este nuevo equipo y ubicarlo en el centro (50%, 50%)
+            const equipoCreado = flotaMaster.find(e => e.interno === internoInput && e.empresa === empresaInput && e.sub === tipoInput);
+            if (equipoCreado) {
+                stateEquipments[equipoCreado.id] = { x: 50, y: 50, estado: 'operativo' };
+            }
 
             cerrarModalAgregarEquipo();
             document.getElementById('nuevo-interno').value = '';
             renderSidebar();
             renderPlacedEquipments();
-            showToast(`✅ ${tipoInput} (${internoInput}) agregado y ubicado en el plano`);
+            showToast(`✅ ${tipoInput} (${internoInput}) agregado y ubicado`);
         }
 
         // 1. CARGAR POSICIONES DESDE LA NUBE (JSONBin)
@@ -896,7 +913,8 @@
             });
         });
 
-        // Inicialización y descarga automática al abrir la página
+        // Inicialización y ejecución
+        reconstruirFlotaMaster();
         renderSidebar();
         cargarPosicionesDesdeNube();
     </script>
