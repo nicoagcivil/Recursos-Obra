@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2canvas para generar la captura de imagen del plano -->
+    <!-- html2canvas para captura del plano -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,6 +41,12 @@
             z-index: 50;
             opacity: 0.9;
         }
+        /* Relación de aspecto fija para evitar desalineación entre pantallas (1654x2339) */
+        .map-aspect-ratio {
+            aspect-ratio: 1654 / 2339;
+            max-width: 100%;
+            max-height: 100%;
+        }
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
@@ -61,7 +67,7 @@
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Nube Activa & Captura para WhatsApp</p>
+                    <p class="text-xs text-slate-400">Escala de Imagen Fija (1654x2339) & Nube Activa</p>
                 </div>
             </div>
 
@@ -132,7 +138,7 @@
         </aside>
 
         <!-- Main Map Area (Derecha) -->
-        <main class="flex-grow bg-slate-950 border border-slate-700 rounded-2xl relative overflow-hidden flex flex-col shadow-2xl">
+        <main class="flex-grow bg-slate-950 border border-slate-700 rounded-2xl relative overflow-hidden flex flex-col shadow-2xl items-center justify-center">
             
             <!-- Controles de Zoom y Movimiento -->
             <div class="absolute top-4 right-4 z-30 flex flex-col bg-slate-900/90 border border-slate-700 rounded-xl p-1 shadow-2xl backdrop-blur-md gap-1">
@@ -151,9 +157,9 @@
             </div>
 
             <!-- Visor del Plano -->
-            <div id="map-viewport" class="canvas-container flex-grow relative overflow-hidden flex items-center justify-center p-0 cursor-grab">
-                <div id="map-zoom-container" class="relative w-full h-full transform-gpu origin-top-left transition-transform duration-75">
-                    <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1200x800/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0">
+            <div id="map-viewport" class="canvas-container w-full h-full relative overflow-hidden flex items-center justify-center p-0 cursor-grab">
+                <div id="map-zoom-container" class="relative map-aspect-ratio transform-gpu origin-center transition-transform duration-75">
+                    <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1654x2339/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="w-full h-full object-fill pointer-events-none z-0">
                     <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
                 </div>
             </div>
