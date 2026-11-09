@@ -32,7 +32,7 @@
             transform: translate(-50%, -50%);
             cursor: move;
             z-index: 30;
-            touch-action: none; /* Crucial para permitir arrastre táctil fluido en celular */
+            touch-action: none;
         }
         .placed-equipment:hover {
             z-index: 40;
@@ -41,11 +41,12 @@
             z-index: 50;
             opacity: 0.9;
         }
-        /* Proporción exacta de la imagen real 1654x2339 */
-        .map-aspect-ratio {
-            aspect-ratio: 1654 / 2339;
+        /* Contenedor estricto con la proporción exacta 1654x2339 */
+        #map-image-wrapper {
+            position: relative;
             width: 100%;
-            max-width: 1000px;
+            max-width: 700px;
+            aspect-ratio: 1654 / 2339;
         }
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -67,7 +68,7 @@
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Coordenadas Reales (1654x2339) & Táctil Activo</p>
+                    <p class="text-xs text-slate-400">Escala Absoluta (1654x2339) Sincronizada</p>
                 </div>
             </div>
 
@@ -156,11 +157,16 @@
                 </div>
             </div>
 
-            <!-- Visor del Plano (Dimensiones reales de referencia: 1654x2339) -->
+            <!-- Visor del Plano -->
             <div id="map-viewport" class="canvas-container w-full h-full relative overflow-auto flex items-center justify-center p-4">
-                <div id="map-zoom-container" class="relative map-aspect-ratio transform-gpu origin-center transition-transform duration-75 shadow-2xl">
-                    <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1654x2339/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="w-full h-full object-fill pointer-events-none z-0 rounded-lg">
-                    <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
+                <div id="map-zoom-container" class="relative transition-transform duration-75 origin-center">
+                    
+                    <!-- Contenedor con medidas fijas proporcionales a la imagen real -->
+                    <div id="map-image-wrapper">
+                        <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1654x2339/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0 rounded-lg shadow-2xl">
+                        <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -198,11 +204,9 @@
 
     <!-- Application Script -->
     <script>
-        // CONFIGURACIÓN DE JSONBin.io (NUBE)
         const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
 
-        // Dimensiones físicas base de tu archivo plano_obra.jpg
         const PLANO_WIDTH = 1654;
         const PLANO_HEIGHT = 2339;
 
@@ -370,6 +374,7 @@
         const sidebarList = document.getElementById('equipment-sidebar-list');
         const dropLayer = document.getElementById('equipment-drop-layer');
         const zoomContainer = document.getElementById('map-zoom-container');
+        const mapImageWrapper = document.getElementById('map-image-wrapper');
         const flotaCount = document.getElementById('flota-count');
 
         let currentZoom = 1;
@@ -396,7 +401,7 @@
             currentZoom = 1; updateZoomTransform();
         });
 
-        // 1. CARGAR POSICIONES DESDE LA NUBE (JSONBin)
+        // 1. CARGAR POSICIONES DESDE LA NUBE
         async function cargarPosicionesDesdeNube() {
             showToast("🔄 Sincronizando con la nube...");
             try {
@@ -418,7 +423,7 @@
             }
         }
 
-        // 2. GUARDAR POSICIONES EN LA NUBE (JSONBin)
+        // 2. GUARDAR POSICIONES EN LA NUBE
         async function guardarPosicionesManual() {
             showToast("⏳ Guardando cambios en la nube...");
             try {
@@ -446,7 +451,7 @@
         async function descargarCapturaPlano() {
             showToast("📸 Generando imagen del plano...");
             try {
-                const canvas = await html2canvas(zoomContainer, {
+                const canvas = await html2canvas(mapImageWrapper, {
                     useCORS: true,
                     allowTaint: true,
                     scale: 2
@@ -484,21 +489,18 @@
             }
         }
 
-        // SOPORTE DE DROP (Escritorio / Tablet)
+        // SOPORTE DE DROP DIRECTO (Escritorio / Tablet)
         dropLayer.addEventListener('dragover', (e) => e.preventDefault());
         dropLayer.addEventListener('drop', (e) => {
             e.preventDefault();
             const id = e.dataTransfer.getData('text/plain');
             if (!id) return;
 
-            const rect = zoomContainer.getBoundingClientRect();
-            let x = ((e.clientX - rect.left) / rect.width) * 100;
-            let y = ((e.clientY - rect.top) / rect.height) * 100;
+            const rect = mapImageWrapper.getBoundingClientRect();
+            const xPx = ((e.clientX - rect.left) / rect.width) * PLANO_WIDTH;
+            const yPx = ((e.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
 
-            x = Math.max(1, Math.min(99, x));
-            y = Math.max(1, Math.min(99, y));
-
-            stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
+            stateEquipments[id] = { x: xPx, y: yPx, estado: 'operativo' };
             renderSidebar();
             renderPlacedEquipments();
             showToast("Equipo ubicado (Guarde en nube)");
@@ -583,9 +585,7 @@
                     <i class="fa-solid fa-grip-vertical text-slate-600 text-xs px-1"></i>
                 `;
 
-                // Soporte táctil en sidebar para mover equipos directamente al plano en celulares
                 item.addEventListener('touchstart', (e) => {
-                    const touch = e.touches[0];
                     window.activeTouchDragId = eq.id;
                 }, {passive: true});
 
@@ -611,10 +611,14 @@
                 const isDetenido = data.estado === 'detenido';
                 const colorTheme = getColorByEmpresa(eq.empresa);
 
+                // Convertir coordenadas en píxeles reales a porcentajes precisos de la imagen
+                const leftPercent = (data.x / PLANO_WIDTH) * 100;
+                const topPercent = (data.y / PLANO_HEIGHT) * 100;
+
                 const elem = document.createElement('div');
                 elem.className = `placed-equipment group flex flex-col items-center select-none cursor-move`;
-                elem.style.left = `${data.x}%`;
-                elem.style.top = `${data.y}%`;
+                elem.style.left = `${leftPercent}%`;
+                elem.style.top = `${topPercent}%`;
                 elem.dataset.id = id;
 
                 elem.innerHTML = `
@@ -656,17 +660,18 @@
 
                 window.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
-                    const rect = zoomContainer.getBoundingClientRect();
-                    let x = ((e.clientX - rect.left) / rect.width) * 100;
-                    let y = ((e.clientY - rect.top) / rect.height) * 100;
+                    const rect = mapImageWrapper.getBoundingClientRect();
+                    let xPx = ((e.clientX - rect.left) / rect.width) * PLANO_WIDTH;
+                    let yPx = ((e.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
 
-                    x = Math.max(1, Math.min(99, x));
-                    y = Math.max(1, Math.min(99, y));
+                    xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
+                    yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
 
-                    elem.style.left = `${x}%`;
-                    elem.style.top = `${y}%`;
-                    stateEquipments[id].x = x;
-                    stateEquipments[id].y = y;
+                    stateEquipments[id].x = xPx;
+                    stateEquipments[id].y = yPx;
+                    
+                    elem.style.left = `${(xPx / PLANO_WIDTH) * 100}%`;
+                    elem.style.top = `${(yPx / PLANO_HEIGHT) * 100}%`;
                 });
 
                 window.addEventListener('mouseup', () => {
@@ -685,17 +690,18 @@
 
                 elem.addEventListener('touchmove', (e) => {
                     const touch = e.touches[0];
-                    const rect = zoomContainer.getBoundingClientRect();
-                    let x = ((touch.clientX - rect.left) / rect.width) * 100;
-                    let y = ((touch.clientY - rect.top) / rect.height) * 100;
+                    const rect = mapImageWrapper.getBoundingClientRect();
+                    let xPx = ((touch.clientX - rect.left) / rect.width) * PLANO_WIDTH;
+                    let yPx = ((touch.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
 
-                    x = Math.max(1, Math.min(99, x));
-                    y = Math.max(1, Math.min(99, y));
+                    xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
+                    yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
 
-                    elem.style.left = `${x}%`;
-                    elem.style.top = `${y}%`;
-                    stateEquipments[id].x = x;
-                    stateEquipments[id].y = y;
+                    stateEquipments[id].x = xPx;
+                    stateEquipments[id].y = yPx;
+
+                    elem.style.left = `${(xPx / PLANO_WIDTH) * 100}%`;
+                    elem.style.top = `${(yPx / PLANO_HEIGHT) * 100}%`;
                     e.stopPropagation();
                 }, {passive: true});
 
@@ -726,14 +732,14 @@
         dropLayer.addEventListener('touchend', (e) => {
             if (!window.activeTouchDragId) return;
             const touch = e.changedTouches[0];
-            const rect = zoomContainer.getBoundingClientRect();
-            let x = ((touch.clientX - rect.left) / rect.width) * 100;
-            let y = ((touch.clientY - rect.top) / rect.height) * 100;
+            const rect = mapImageWrapper.getBoundingClientRect();
+            let xPx = ((touch.clientX - rect.left) / rect.width) * PLANO_WIDTH;
+            let yPx = ((touch.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
 
-            x = Math.max(1, Math.min(99, x));
-            y = Math.max(1, Math.min(99, y));
+            xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
+            yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
 
-            stateEquipments[window.activeTouchDragId] = { x: x, y: y, estado: 'operativo' };
+            stateEquipments[window.activeTouchDragId] = { x: xPx, y: yPx, estado: 'operativo' };
             window.activeTouchDragId = null;
             renderSidebar();
             renderPlacedEquipments();
