@@ -59,14 +59,14 @@
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Iconos de Equipos extraídos de Planilla de Carga</p>
+                    <p class="text-xs text-slate-400">Sincronización en la Nube Activa (JSONBin.io)</p>
                 </div>
             </div>
 
             <!-- Acciones rápidas -->
             <div class="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
                 <button id="btn-save-positions" type="button" onclick="guardarPosicionesManual()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-[#28a745] fa-floppy-disk"></i> Guardar Posiciones
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Nube
                 </button>
                 <button id="btn-reset-map" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-left"></i> Restablecer Flota
@@ -175,7 +175,7 @@
         gap: 8px;
         transition: all 0.2s ease;
     ">
-        <i class="fa-solid fa-floppy-disk"></i> 💾 Guardar Posiciones
+        <i class="fa-solid fa-cloud-arrow-up"></i> 💾 Guardar en Nube
     </button>
 
     <!-- Modal Resumen WhatsApp -->
@@ -210,6 +210,10 @@
 
     <!-- Application Script -->
     <script>
+        // CONFIGURACIÓN DE JSONBin.io (NUBE)
+        const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
+        const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
+
         const equiposEstructura = {
             "Excavadoras": {
                 "Excavadora": [
@@ -369,7 +373,7 @@
             });
         });
 
-        let stateEquipments = JSON.parse(localStorage.getItem('obra_equipments_placed')) || {};
+        let stateEquipments = {};
 
         const sidebarList = document.getElementById('equipment-sidebar-list');
         const dropLayer = document.getElementById('equipment-drop-layer');
@@ -440,7 +444,52 @@
             }
         });
 
-        // LÓGICA DE GESTIÓN DE DROP EN EL MAPA
+        // 1. CARGAR POSICIONES DESDE LA NUBE (JSONBin)
+        async function cargarPosicionesDesdeNube() {
+            showToast("🔄 Sincronizando con la nube...");
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`, {
+                    headers: { "X-Master-Key": JSONBIN_KEY }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.record && typeof data.record === 'object') {
+                        stateEquipments = data.record;
+                        renderSidebar();
+                        renderPlacedEquipments();
+                        showToast("✅ Sincronizado correctamente");
+                    }
+                }
+            } catch (err) {
+                console.error("Error al cargar:", err);
+                showToast("⚠️ Modo offline activado");
+            }
+        }
+
+        // 2. GUARDAR POSICIONES EN LA NUBE (JSONBin)
+        async function guardarPosicionesManual() {
+            showToast("⏳ Guardando cambios en la nube...");
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Master-Key": JSONBIN_KEY
+                    },
+                    body: JSON.stringify(stateEquipments)
+                });
+
+                if (res.ok) {
+                    showToast("🌐 ¡Guardado para todos los celulares!");
+                } else {
+                    showToast("❌ Error al guardar");
+                }
+            } catch (err) {
+                console.error("Error al guardar:", err);
+                showToast("❌ Sin conexión a la nube");
+            }
+        }
+
         dropLayer.addEventListener('dragover', (e) => e.preventDefault());
         dropLayer.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -455,10 +504,9 @@
             y = Math.max(1, Math.min(99, y));
 
             stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
-            saveState();
             renderSidebar();
             renderPlacedEquipments();
-            showToast("Equipo ubicado en el plano");
+            showToast("Equipo ubicado (Guarde en nube para aplicar)");
         });
 
         let selectedCategory = 'all';
@@ -623,38 +671,26 @@
                     if (isDragging) {
                         isDragging = false;
                         elem.classList.remove('active-drag');
-                        saveState();
                     }
                 });
 
                 // Doble clic para devolver al menú lateral
                 elem.addEventListener('dblclick', () => {
                     delete stateEquipments[id];
-                    saveState();
                     renderSidebar();
                     renderPlacedEquipments();
-                    showToast("Equipo removido del plano");
+                    showToast("Equipo devuelto al panel");
                 });
 
                 // Cambiar estado operativo / detenido
                 elem.querySelector('.btn-change-status').addEventListener('click', (e) => {
                     e.stopPropagation();
                     stateEquipments[id].estado = stateEquipments[id].estado === 'detenido' ? 'operativo' : 'detenido';
-                    saveState();
                     renderPlacedEquipments();
                 });
 
                 dropLayer.appendChild(elem);
             });
-        }
-
-        function saveState() {
-            localStorage.setItem('obra_equipments_placed', JSON.stringify(stateEquipments));
-        }
-
-        function guardarPosicionesManual() {
-            saveState();
-            showToast("💾 Posiciones guardadas en la memoria local");
         }
 
         function showToast(msg) {
@@ -671,7 +707,6 @@
         document.getElementById('btn-reset-map').addEventListener('click', () => {
             if (confirm("¿Deseas quitar todos los equipos del plano?")) {
                 stateEquipments = {};
-                saveState();
                 renderSidebar();
                 renderPlacedEquipments();
                 showToast("Mapa restablecido");
@@ -712,9 +747,9 @@
             });
         });
 
-        // Carga Inicial
+        // Inicialización y descarga automática al abrir la página
         renderSidebar();
-        renderPlacedEquipments();
+        cargarPosicionesDesdeNube();
     </script>
 </body>
 </html>
