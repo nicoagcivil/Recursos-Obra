@@ -735,6 +735,56 @@
         // Init
         renderSidebar();
         renderPlacedEquipments();
+        function guardarPosiciones() {
+    const posiciones = {};
+    
+    // Obtener las coordenadas de cada equipo en el plano
+    document.querySelectorAll('.equipo-marcador').forEach(el => {
+        const id = el.getAttribute('data-id') || el.id;
+        posiciones[id] = {
+            left: el.style.left,
+            top: el.style.top
+        };
+    });
+
+    // Guardar en la memoria local del navegador
+    localStorage.setItem('posiciones_equipos_obra', JSON.stringify(posiciones));
+
+    alert('✅ ¡Posiciones guardadas correctamente!');
+}
+
+// Cargar automáticamente las posiciones guardadas al abrir la página
+window.addEventListener('DOMContentLoaded', () => {
+    const guardadas = localStorage.getItem('posiciones_equipos_obra');
+    if (guardadas) {
+        const posiciones = JSON.parse(guardadas);
+        Object.keys(posiciones).forEach(id => {
+            const el = document.querySelector(`[data-id="${id}"]`) || document.getElementById(id);
+            if (el) {
+                el.style.left = posiciones[id].left;
+                el.style.top = posiciones[id].top;
+            }
+        });
+    }
+});
     </script>
+    <!-- Botón Flotante para Guardar Posiciones -->
+<button id="btnGuardar" onclick="guardarPosiciones()" style="
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 9999;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 14px 22px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    cursor: pointer;
+">
+    💾 Guardar Posiciones
+</button>
 </body>
 </html>
