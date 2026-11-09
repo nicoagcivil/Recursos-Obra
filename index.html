@@ -13,7 +13,7 @@
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; touch-action: manipulation; }
+        body { font-family: 'Inter', sans-serif; touch-action: none; overflow: hidden; }
         .canvas-container {
             background-color: #0f172a;
             background-image: radial-gradient(#1e293b 1px, transparent 1px);
@@ -22,10 +22,6 @@
         .draggable-item {
             cursor: grab;
             user-select: none;
-            touch-action: none;
-        }
-        .draggable-item:active {
-            cursor: grabbing;
         }
         .placed-equipment {
             position: absolute;
@@ -33,137 +29,119 @@
             cursor: move;
             z-index: 30;
             touch-action: none;
-        }
-        .placed-equipment:hover {
-            z-index: 40;
+            padding: 15px; /* Área táctil ampliada para el dedo */
+            margin: -15px;
         }
         .placed-equipment.active-drag {
             z-index: 50;
-            opacity: 0.9;
+            opacity: 0.95;
         }
-        /* Contenedor estricto con la proporción exacta 1654x2339 */
+        /* Contenedor estricto con proporción 1654x2339 */
         #map-image-wrapper {
             position: relative;
             width: 100%;
-            max-width: 700px;
+            max-width: 800px;
             aspect-ratio: 1654 / 2339;
         }
-        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #b41f25; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-[#b41f25] selection:text-white overflow-x-hidden relative">
+<body class="bg-slate-900 text-slate-100 h-screen flex flex-col selection:bg-[#b41f25] selection:text-white relative">
 
     <!-- Header Navigation -->
-    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 py-3 px-4 sticky top-0 z-40 shadow-lg">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 py-2.5 px-4 sticky top-0 z-40 shadow-lg shrink-0">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
             <div class="flex items-center space-x-3">
                 <div class="bg-[#b41f25] p-2 rounded-xl text-white shadow-md">
-                    <i class="fa-solid fa-map-location-dot text-xl"></i>
+                    <i class="fa-solid fa-map-location-dot text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                    <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Escala Absoluta (1654x2339) Sincronizada</p>
+                    <p class="text-[10px] text-slate-400">Modo Táctil Optimizado (1654x2339)</p>
                 </div>
             </div>
 
             <!-- Acciones rápidas -->
-            <div class="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
-                <button id="btn-save-positions" type="button" onclick="guardarPosicionesManual()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Nube
+            <div class="flex items-center gap-1.5 flex-wrap w-full md:w-auto justify-end">
+                <button type="button" onclick="guardarPosicionesManual()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Nube
                 </button>
-                <button id="btn-download-image" type="button" onclick="descargarCapturaPlano()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-camera"></i> Compartir Imagen (Wsp)
+                <button type="button" onclick="descargarCapturaPlano()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-camera"></i> Compartir (Wsp)
                 </button>
-                <button id="btn-reset-map" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-rotate-left"></i> Restablecer Flota
+                <button type="button" id="btn-reset-map" class="px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all" title="Restablecer">
+                    <i class="fa-solid fa-rotate-left"></i>
                 </button>
-                <button id="btn-generate-summary" type="button" class="px-3 py-1.5 rounded-xl bg-[#b41f25] hover:bg-[#9b1a1f] text-white text-xs font-bold shadow-lg shadow-[#b41f25]/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-brands fa-whatsapp text-sm"></i> Resumen Texto
+                <button type="button" id="btn-generate-summary" class="px-3 py-1.5 rounded-xl bg-[#b41f25] hover:bg-[#9b1a1f] text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1">
+                    <i class="fa-brands fa-whatsapp"></i> Texto
                 </button>
             </div>
         </div>
     </header>
 
     <!-- App Body Layout -->
-    <div class="flex-grow flex flex-col md:flex-row max-w-7xl w-full mx-auto p-2 sm:p-4 gap-4 h-[calc(100vh-65px)]">
+    <div class="flex-grow flex flex-col md:flex-row max-w-7xl w-full mx-auto p-2 gap-3 overflow-hidden">
         
         <!-- Sidebar Panel de Flota (Izquierda) -->
-        <aside class="w-full md:w-80 bg-slate-800 border border-slate-700 rounded-2xl flex flex-col overflow-hidden shadow-xl shrink-0 h-72 md:h-full">
-            <div class="p-3.5 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-                <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+        <aside class="w-full md:w-72 bg-slate-800 border border-slate-700 rounded-2xl flex flex-col overflow-hidden shadow-xl shrink-0 h-44 md:h-full">
+            <div class="p-2.5 bg-slate-800 border-b border-slate-700 flex justify-between items-center shrink-0">
+                <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                     <i class="fa-solid fa-truck-monster text-[#b41f25]"></i> Flota Obra
                 </h2>
                 <span id="flota-count" class="bg-slate-900 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">0 dispon.</span>
             </div>
 
-            <!-- Buscador Rápido de Equipos por Interno/Nombre -->
-            <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-2">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                    <input type="text" id="input-search-equip" placeholder="Buscar por interno (ej: C044, K056)..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
-                </div>
-
-                <!-- Desplegables de Selección Jerárquica -->
-                <div class="grid grid-cols-2 gap-2">
-                    <select id="filter-categoria-select" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
-                        <option value="all">Todas las Categorías</option>
-                        <option value="Excavadoras">Excavadoras / Palas</option>
-                        <option value="Camiones">Camiones (Ruta/Volcador)</option>
-                        <option value="Cisternas">Camiones Regadores</option>
-                        <option value="Combustible">Combustible / Lubricador</option>
-                        <option value="Viales">Viales (Moto/Rodillo/Topo)</option>
-                        <option value="Livianos">Livianos y Apoyo</option>
+            <!-- Buscador y Filtros -->
+            <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-1.5 shrink-0">
+                <input type="text" id="input-search-equip" placeholder="Buscar interno (ej: C044)..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
+                <div class="grid grid-cols-2 gap-1.5">
+                    <select id="filter-categoria-select" class="bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-[11px] text-slate-200 focus:outline-none">
+                        <option value="all">Todas Cat.</option>
+                        <option value="Excavadoras">Excavadoras</option>
+                        <option value="Camiones">Camiones</option>
+                        <option value="Cisternas">Cisternas</option>
+                        <option value="Combustible">Combustible</option>
+                        <option value="Viales">Viales</option>
+                        <option value="Livianos">Livianos</option>
                         <option value="EquiposAuxiliares">Auxiliares</option>
                     </select>
-
-                    <select id="filter-subcategoria-select" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#b41f25] disabled:opacity-40" disabled>
-                        <option value="all">Todos los Tipos</option>
+                    <select id="filter-subcategoria-select" class="bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-[11px] text-slate-200 focus:outline-none disabled:opacity-40" disabled>
+                        <option value="all">Todos Tipos</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Lista de Equipos Arrastrables -->
-            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto">
-                <!-- Se puebla dinámicamente -->
-            </div>
+            <!-- Lista de Equipos -->
+            <div id="equipment-sidebar-list" class="flex-grow p-2 space-y-1.5 overflow-y-auto"></div>
             
-            <div class="p-2.5 bg-slate-900/40 border-t border-slate-700/60 text-[10px] text-slate-400 text-center">
-                💡 Arrastra el icono al plano. Doble toque/clic en el plano para retirarlo.
+            <div class="p-2 bg-slate-900/40 border-t border-slate-700 text-[9px] text-slate-400 text-center shrink-0">
+                💡 Arrastra o toca un equipo para ubicarlo en el plano.
             </div>
         </aside>
 
         <!-- Main Map Area (Derecha) -->
         <main class="flex-grow bg-slate-950 border border-slate-700 rounded-2xl relative overflow-auto flex flex-col shadow-2xl items-center justify-center p-2">
             
-            <!-- Controles de Zoom -->
-            <div class="absolute top-4 right-4 z-30 flex flex-col bg-slate-900/90 border border-slate-700 rounded-xl p-1 shadow-2xl backdrop-blur-md gap-1">
-                <button id="btn-zoom-in" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs font-bold transition-all shadow" title="Acercar">
-                    <i class="fa-solid fa-magnifying-glass-plus"></i>
-                </button>
-                <button id="btn-zoom-out" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs font-bold transition-all shadow" title="Alejar">
-                    <i class="fa-solid fa-magnifying-glass-minus"></i>
-                </button>
-                <button id="btn-zoom-reset" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs font-bold transition-all shadow" title="Restablecer">
-                    <i class="fa-solid fa-expand"></i>
-                </button>
-                <div id="zoom-level-indicator" class="text-[9px] font-bold text-slate-400 text-center py-1 border-t border-slate-800 select-none">
-                    100%
-                </div>
+            <!-- Controles Zoom -->
+            <div class="absolute top-3 right-3 z-30 flex flex-col bg-slate-900/90 border border-slate-700 rounded-xl p-1 shadow-2xl backdrop-blur-md gap-1">
+                <button type="button" onclick="ajustarZoom(0.25)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button type="button" onclick="ajustarZoom(-0.25)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button type="button" onclick="resetZoom()" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-expand"></i></button>
+                <div id="zoom-level-indicator" class="text-[8px] font-bold text-slate-400 text-center py-0.5 border-t border-slate-800">100%</div>
             </div>
 
             <!-- Visor del Plano -->
-            <div id="map-viewport" class="canvas-container w-full h-full relative overflow-auto flex items-center justify-center p-4">
+            <div id="map-viewport" class="canvas-container w-full h-full relative overflow-auto flex items-center justify-center p-2">
                 <div id="map-zoom-container" class="relative transition-transform duration-75 origin-center">
                     
-                    <!-- Contenedor con medidas fijas proporcionales a la imagen real -->
                     <div id="map-image-wrapper">
-                        <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1654x2339/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0 rounded-lg shadow-2xl">
+                        <!-- Imagen de fondo principal -->
+                        <img id="plano-fondo-img" src="plano_obra.jpg" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-fill pointer-events-none z-0 rounded-lg shadow-2xl">
+                        <!-- Capa interactiva de equipos -->
                         <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
                     </div>
 
@@ -172,22 +150,16 @@
         </main>
     </div>
 
-    <!-- Modal Resumen WhatsApp -->
+    <!-- Modal Resumen -->
     <div id="modal-summary" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-base font-bold text-white flex items-center gap-2">
                     <i class="fa-brands fa-whatsapp text-emerald-500 text-lg"></i> Parte de Ubicación de Equipos
                 </h3>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-white text-lg">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
-            <p class="text-xs text-slate-300">Copia este reporte para enviarlo directamente al grupo de WhatsApp de la obra:</p>
-            
             <div id="summary-text-box" class="bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto select-all"></div>
-
             <div class="flex gap-2 justify-end pt-2">
                 <button id="btn-copy-summary" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow">
                     <i class="fa-regular fa-copy"></i> Copiar Texto
@@ -196,13 +168,12 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 left-5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-5 bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
         <i class="fa-solid fa-circle-check"></i>
         <span id="toast-msg">Notificación</span>
     </div>
 
-    <!-- Application Script -->
     <script>
         const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
@@ -353,55 +324,30 @@
 
         const flotaMaster = [];
         let idCounter = 1;
-
         Object.keys(equiposEstructura).forEach(cat => {
             Object.keys(equiposEstructura[cat]).forEach(sub => {
                 equiposEstructura[cat][sub].forEach(eq => {
                     flotaMaster.push({
-                        id: `eq_${idCounter++}`,
-                        cat: cat,
-                        sub: sub,
-                        interno: eq.interno,
-                        empresa: eq.empresa,
-                        icono: getIconForEquipo(sub)
+                        id: `eq_${idCounter++}`, cat: cat, sub: sub, interno: eq.interno, empresa: eq.empresa, icono: getIconForEquipo(sub)
                     });
                 });
             });
         });
 
         let stateEquipments = {};
-
-        const sidebarList = document.getElementById('equipment-sidebar-list');
-        const dropLayer = document.getElementById('equipment-drop-layer');
-        const zoomContainer = document.getElementById('map-zoom-container');
-        const mapImageWrapper = document.getElementById('map-image-wrapper');
-        const flotaCount = document.getElementById('flota-count');
-
         let currentZoom = 1;
 
-        function updateZoomTransform() {
-            zoomContainer.style.transform = `scale(${currentZoom})`;
+        function ajustarZoom(delta) {
+            currentZoom = Math.max(0.6, Math.min(3, currentZoom + delta));
+            document.getElementById('map-zoom-container').style.transform = `scale(${currentZoom})`;
             document.getElementById('zoom-level-indicator').textContent = `${Math.round(currentZoom * 100)}%`;
-            
-            const scaleFactor = Math.max(0.4, 1 / Math.sqrt(currentZoom));
-            document.querySelectorAll('.placed-equipment-icon').forEach(icon => {
-                icon.style.transform = `scale(${scaleFactor})`;
-            });
+        }
+        function resetZoom() {
+            currentZoom = 1;
+            document.getElementById('map-zoom-container').style.transform = `scale(1)`;
+            document.getElementById('zoom-level-indicator').textContent = `100%`;
         }
 
-        document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            if (currentZoom < 4) { currentZoom += 0.25; updateZoomTransform(); }
-        });
-
-        document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            if (currentZoom > 0.6) { currentZoom -= 0.25; updateZoomTransform(); }
-        });
-
-        document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-            currentZoom = 1; updateZoomTransform();
-        });
-
-        // 1. CARGAR POSICIONES DESDE LA NUBE
         async function cargarPosicionesDesdeNube() {
             showToast("🔄 Sincronizando con la nube...");
             try {
@@ -414,302 +360,149 @@
                         stateEquipments = data.record;
                         renderSidebar();
                         renderPlacedEquipments();
-                        showToast("✅ Sincronizado correctamente");
+                        showToast("✅ Sincronizado");
                     }
                 }
             } catch (err) {
-                console.error("Error al cargar:", err);
-                showToast("⚠️ Modo offline activado");
+                showToast("⚠️ Modo offline");
             }
         }
 
-        // 2. GUARDAR POSICIONES EN LA NUBE
         async function guardarPosicionesManual() {
-            showToast("⏳ Guardando cambios en la nube...");
+            showToast("⏳ Guardando en la nube...");
             try {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
                     method: 'PUT',
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Master-Key": JSONBIN_KEY
-                    },
+                    headers: { "Content-Type": "application/json", "X-Master-Key": JSONBIN_KEY },
                     body: JSON.stringify(stateEquipments)
                 });
-
                 if (res.ok) {
-                    showToast("🌐 ¡Guardado para todos los celulares!");
+                    showToast("🌐 ¡Guardado para todos los dispositivos!");
                 } else {
                     showToast("❌ Error al guardar");
                 }
             } catch (err) {
-                console.error("Error al guardar:", err);
-                showToast("❌ Sin conexión a la nube");
+                showToast("❌ Sin conexión");
             }
         }
 
-        // 3. DESCARGAR / COMPARTIR IMAGEN (WSP)
         async function descargarCapturaPlano() {
-            showToast("📸 Generando imagen del plano...");
+            showToast("📸 Generando imagen...");
             try {
-                const canvas = await html2canvas(mapImageWrapper, {
-                    useCORS: true,
-                    allowTaint: true,
-                    scale: 2
-                });
-
+                const canvas = await html2canvas(document.getElementById('map-image-wrapper'), { useCORS: true, scale: 2 });
                 canvas.toBlob(async (blob) => {
                     const fecha = new Date().toISOString().slice(0, 10);
-                    const nombreArchivo = `Plano_Obra_PozaH4_${fecha}.png`;
-                    const file = new File([blob], nombreArchivo, { type: 'image/png' });
-
+                    const file = new File([blob], `Plano_PozaH4_${fecha}.png`, { type: 'image/png' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        try {
-                            await navigator.share({
-                                title: 'Ubicación de Equipos - Poza H4',
-                                text: 'Plano actualizado de la flota en obra.',
-                                files: [file]
-                            });
-                            showToast("✅ Imagen compartida con éxito");
-                            return;
-                        } catch (err) {
-                            console.log("Usuario canceló o no soportado, descargando archivo...");
-                        }
+                        await navigator.share({ title: 'Plano Poza H4', files: [file] });
+                        return;
                     }
-
                     const link = document.createElement('a');
-                    link.download = nombreArchivo;
+                    link.download = file.name;
                     link.href = URL.createObjectURL(blob);
                     link.click();
-                    URL.revokeObjectURL(link.href);
-                    showToast("💾 Imagen descargada en tu dispositivo");
+                    showToast("💾 Imagen descargada");
                 }, 'image/png');
             } catch (err) {
-                console.error("Error al capturar imagen:", err);
-                showToast("❌ No se pudo generar la imagen");
+                showToast("❌ Error al capturar");
             }
         }
 
-        // SOPORTE DE DROP DIRECTO (Escritorio / Tablet)
-        dropLayer.addEventListener('dragover', (e) => e.preventDefault());
-        dropLayer.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const id = e.dataTransfer.getData('text/plain');
-            if (!id) return;
+        // Sistema para seleccionar un equipo del panel y tocar el plano para colocarlo (Perfecto para celulares)
+        let selectedEquipoIdToPlace = null;
 
+        const mapImageWrapper = document.getElementById('map-image-wrapper');
+        const dropLayer = document.getElementById('equipment-drop-layer');
+        const sidebarList = document.getElementById('equipment-sidebar-list');
+        const flotaCount = document.getElementById('flota-count');
+
+        mapImageWrapper.addEventListener('click', (e) => {
+            if (!selectedEquipoIdToPlace) return;
             const rect = mapImageWrapper.getBoundingClientRect();
-            const xPx = ((e.clientX - rect.left) / rect.width) * PLANO_WIDTH;
-            const yPx = ((e.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
+            let xPx = ((e.clientX - rect.left) / rect.width) * PLANO_WIDTH;
+            let yPx = ((e.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
 
-            stateEquipments[id] = { x: xPx, y: yPx, estado: 'operativo' };
+            stateEquipments[selectedEquipoIdToPlace] = { x: xPx, y: yPx, estado: 'operativo' };
+            selectedEquipoIdToPlace = null;
             renderSidebar();
             renderPlacedEquipments();
-            showToast("Equipo ubicado (Guarde en nube)");
+            showToast("✅ Equipo ubicado en el plano");
         });
-
-        let selectedCategory = 'all';
-        let selectedSubcategory = 'all';
-        let searchQuery = '';
-
-        const filterCatSelect = document.getElementById('filter-categoria-select');
-        const filterSubSelect = document.getElementById('filter-subcategoria-select');
-        const inputSearch = document.getElementById('input-search-equip');
-
-        filterCatSelect.addEventListener('change', function() {
-            selectedCategory = this.value;
-            selectedSubcategory = 'all';
-            filterSubSelect.innerHTML = '<option value="all">Todos los Tipos</option>';
-
-            if (selectedCategory !== 'all' && equiposEstructura[selectedCategory]) {
-                filterSubSelect.disabled = false;
-                Object.keys(equiposEstructura[selectedCategory]).forEach(sub => {
-                    const opt = document.createElement('option');
-                    opt.value = sub;
-                    opt.textContent = sub;
-                    filterSubSelect.appendChild(opt);
-                });
-            } else {
-                filterSubSelect.disabled = true;
-            }
-            renderSidebar();
-        });
-
-        filterSubSelect.addEventListener('change', function() {
-            selectedSubcategory = this.value;
-            renderSidebar();
-        });
-
-        if (inputSearch) {
-            inputSearch.addEventListener('input', (e) => {
-                searchQuery = e.target.value.toLowerCase().trim();
-                renderSidebar();
-            });
-        }
 
         function renderSidebar() {
             sidebarList.innerHTML = '';
-            let unplacedCount = 0;
-
+            let unplaced = 0;
             flotaMaster.forEach(eq => {
                 if (stateEquipments[eq.id]) return;
-
-                if (selectedCategory !== 'all' && eq.cat !== selectedCategory) return;
-                if (selectedSubcategory !== 'all' && eq.sub !== selectedSubcategory) return;
-
-                if (searchQuery) {
-                    const matchInterno = eq.interno.toLowerCase().includes(searchQuery);
-                    const matchSub = eq.sub.toLowerCase().includes(searchQuery);
-                    const matchEmpresa = eq.empresa.toLowerCase().includes(searchQuery);
-                    if (!matchInterno && !matchSub && !matchEmpresa) return;
-                }
-
-                unplacedCount++;
-                const colorTheme = getColorByEmpresa(eq.empresa);
+                unplaced++;
+                const color = getColorByEmpresa(eq.empresa);
                 const item = document.createElement('div');
-                item.className = 'draggable-item bg-slate-900/90 hover:bg-slate-700/80 border border-slate-700 p-2 rounded-xl flex items-center justify-between transition-all shadow-sm';
-                item.draggable = true;
-                item.dataset.id = eq.id;
-
+                item.className = `draggable-item bg-slate-900 border ${selectedEquipoIdToPlace === eq.id ? 'border-emerald-500 ring-2 ring-emerald-500/50' : 'border-slate-700'} p-2 rounded-xl flex items-center justify-between text-xs cursor-pointer`;
                 item.innerHTML = `
-                    <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 rounded-lg ${colorTheme.bg} border ${colorTheme.border} flex items-center justify-center text-white shrink-0 shadow">
-                            <i class="fa-solid ${eq.icono} text-xs"></i>
-                        </div>
-                        <div class="overflow-hidden">
-                            <div class="text-xs font-bold text-slate-200 truncate flex items-center gap-1.5">
-                                <span>${eq.interno}</span>
-                                <span class="text-[9px] ${colorTheme.text} font-bold px-1 rounded bg-slate-950/60 border ${colorTheme.border}">${eq.empresa}</span>
-                            </div>
-                            <div class="text-[10px] text-slate-400 truncate">${eq.sub}</div>
-                        </div>
+                    <div class="flex items-center space-x-2 truncate">
+                        <div class="w-6 h-6 rounded ${color.bg} flex items-center justify-center text-white shrink-0"><i class="fa-solid ${eq.icono} text-[10px]"></i></div>
+                        <div class="truncate"><b>${eq.interno}</b> <span class="text-[9px] ${color.text}">${eq.empresa}</span></div>
                     </div>
-                    <i class="fa-solid fa-grip-vertical text-slate-600 text-xs px-1"></i>
+                    <span class="text-[10px] text-emerald-400 font-bold">${selectedEquipoIdToPlace === eq.id ? 'Toque el plano 📍' : 'Ubicar ➕'}</span>
                 `;
-
-                item.addEventListener('touchstart', (e) => {
-                    window.activeTouchDragId = eq.id;
-                }, {passive: true});
-
-                item.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', eq.id);
+                item.addEventListener('click', () => {
+                    selectedEquipoIdToPlace = eq.id;
+                    renderSidebar();
+                    showToast(`📍 Toque en el plano dónde ubicar a ${eq.interno}`);
                 });
-
                 sidebarList.appendChild(item);
             });
-
-            flotaCount.textContent = `${unplacedCount} dispon.`;
+            flotaCount.textContent = `${unplaced} dispon.`;
         }
 
         function renderPlacedEquipments() {
             dropLayer.innerHTML = '';
-            const scaleFactor = Math.max(0.4, 1 / Math.sqrt(currentZoom));
-
             Object.keys(stateEquipments).forEach(id => {
                 const data = stateEquipments[id];
                 const eq = flotaMaster.find(item => item.id === id);
                 if (!eq) return;
 
                 const isDetenido = data.estado === 'detenido';
-                const colorTheme = getColorByEmpresa(eq.empresa);
-
-                // Convertir coordenadas en píxeles reales a porcentajes precisos de la imagen
-                const leftPercent = (data.x / PLANO_WIDTH) * 100;
-                const topPercent = (data.y / PLANO_HEIGHT) * 100;
+                const color = getColorByEmpresa(eq.empresa);
+                const left = (data.x / PLANO_WIDTH) * 100;
+                const top = (data.y / PLANO_HEIGHT) * 100;
 
                 const elem = document.createElement('div');
-                elem.className = `placed-equipment group flex flex-col items-center select-none cursor-move`;
-                elem.style.left = `${leftPercent}%`;
-                elem.style.top = `${topPercent}%`;
-                elem.dataset.id = id;
+                elem.className = `placed-equipment flex flex-col items-center select-none`;
+                elem.style.left = `${left}%`;
+                elem.style.top = `${top}%`;
 
                 elem.innerHTML = `
-                    <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
-                        <div class="relative ${colorTheme.bg} border ${colorTheme.border} px-1.5 py-1 rounded-lg shadow-md ${colorTheme.shadow} flex items-center justify-center text-white transition-transform duration-150 group-hover:scale-125">
-                            <i class="fa-solid ${eq.icono} text-[10px]"></i>
-                            <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
-                            </button>
-                        </div>
-                        <div class="mt-0.5 px-1 py-0 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
-                            ${eq.interno}
-                        </div>
+                    <div class="relative ${color.bg} border ${color.border} px-2 py-1 rounded-lg shadow-xl flex items-center justify-center text-white">
+                        <i class="fa-solid ${eq.icono} text-xs"></i>
+                        <button class="btn-status absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full ${isDetenido ? 'bg-red-500' : 'bg-emerald-500'} border border-white"></button>
                     </div>
-
-                    <div class="absolute bottom-full mb-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 transform translate-y-1 group-hover:translate-y-0 z-50 bg-slate-900/95 border ${colorTheme.border} p-2 rounded-xl shadow-2xl backdrop-blur-md w-40 text-left">
-                        <div class="flex justify-between items-center border-b border-slate-700/80 pb-1 mb-1">
-                            <span class="text-[10px] font-extrabold text-white">${eq.interno}</span>
-                            <span class="text-[8px] font-extrabold px-1 py-0.5 rounded text-white ${colorTheme.bg}">${eq.empresa}</span>
-                        </div>
-                        <div class="text-[9px] text-slate-300 font-semibold mb-1">
-                            <i class="fa-solid ${eq.icono} ${colorTheme.text} mr-1"></i> ${eq.sub}
-                        </div>
-                        <div class="text-[8px] flex items-center gap-1 font-bold ${isDetenido ? 'text-red-400' : 'text-emerald-400'}">
-                            <span>Estado:</span>
-                            <span>${isDetenido ? '🔴 Detenido' : '🟢 Operativo'}</span>
-                        </div>
+                    <div class="mt-0.5 px-1 bg-slate-950/90 text-white font-extrabold text-[9px] rounded border border-slate-700 whitespace-nowrap">
+                        ${eq.interno}
                     </div>
                 `;
 
-                // --- MOVIMIENTO MOUSE (Escritorio / Tablet) ---
-                let isDragging = false;
-
-                elem.addEventListener('mousedown', (e) => {
-                    if (e.target.classList.contains('btn-change-status')) return;
-                    isDragging = true;
-                    elem.classList.add('active-drag');
-                    e.stopPropagation();
-                });
-
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
+                // Movimiento táctil y de mouse directo sobre el icono colocado
+                let dragging = false;
+                const moveHandler = (clientX, clientY) => {
                     const rect = mapImageWrapper.getBoundingClientRect();
-                    let xPx = ((e.clientX - rect.left) / rect.width) * PLANO_WIDTH;
-                    let yPx = ((e.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
+                    let xPx = ((clientX - rect.left) / rect.width) * PLANO_WIDTH;
+                    let yPx = ((clientY - rect.top) / rect.height) * PLANO_HEIGHT;
+                    stateEquipments[id].x = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
+                    stateEquipments[id].y = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
+                    elem.style.left = `${(stateEquipments[id].x / PLANO_WIDTH) * 100}%`;
+                    elem.style.top = `${(stateEquipments[id].y / PLANO_HEIGHT) * 100}%`;
+                };
 
-                    xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
-                    yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
+                elem.addEventListener('mousedown', () => dragging = true);
+                window.addEventListener('mousemove', (e) => { if (dragging) moveHandler(e.clientX, e.clientY); });
+                window.addEventListener('mouseup', () => dragging = false);
 
-                    stateEquipments[id].x = xPx;
-                    stateEquipments[id].y = yPx;
-                    
-                    elem.style.left = `${(xPx / PLANO_WIDTH) * 100}%`;
-                    elem.style.top = `${(yPx / PLANO_HEIGHT) * 100}%`;
-                });
+                elem.addEventListener('touchstart', () => dragging = true, {passive: true});
+                window.addEventListener('touchmove', (e) => { if (dragging) moveHandler(e.touches[0].clientX, e.touches[0].clientY); }, {passive: true});
+                window.addEventListener('touchend', () => dragging = false);
 
-                window.addEventListener('mouseup', () => {
-                    if (isDragging) {
-                        isDragging = false;
-                        elem.classList.remove('active-drag');
-                    }
-                });
-
-                // --- MOVIMIENTO TÁCTIL (Celulares y Tablets Android/iOS) ---
-                elem.addEventListener('touchstart', (e) => {
-                    if (e.target.classList.contains('btn-change-status')) return;
-                    elem.classList.add('active-drag');
-                    e.stopPropagation();
-                }, {passive: true});
-
-                elem.addEventListener('touchmove', (e) => {
-                    const touch = e.touches[0];
-                    const rect = mapImageWrapper.getBoundingClientRect();
-                    let xPx = ((touch.clientX - rect.left) / rect.width) * PLANO_WIDTH;
-                    let yPx = ((touch.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
-
-                    xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
-                    yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
-
-                    stateEquipments[id].x = xPx;
-                    stateEquipments[id].y = yPx;
-
-                    elem.style.left = `${(xPx / PLANO_WIDTH) * 100}%`;
-                    elem.style.top = `${(yPx / PLANO_HEIGHT) * 100}%`;
-                    e.stopPropagation();
-                }, {passive: true});
-
-                elem.addEventListener('touchend', () => {
-                    elem.classList.remove('active-drag');
-                });
-
-                // Doble clic / Doble toque para devolver al menú lateral
+                // Doble clic / toque para devolver al panel
                 elem.addEventListener('dblclick', () => {
                     delete stateEquipments[id];
                     renderSidebar();
@@ -717,8 +510,7 @@
                     showToast("Equipo devuelto al panel");
                 });
 
-                // Cambiar estado operativo / detenido
-                elem.querySelector('.btn-change-status').addEventListener('click', (e) => {
+                elem.querySelector('.btn-status').addEventListener('click', (e) => {
                     e.stopPropagation();
                     stateEquipments[id].estado = stateEquipments[id].estado === 'detenido' ? 'operativo' : 'detenido';
                     renderPlacedEquipments();
@@ -728,37 +520,15 @@
             });
         }
 
-        // Permitir soltar tocando en pantallas móviles sobre el mapa
-        dropLayer.addEventListener('touchend', (e) => {
-            if (!window.activeTouchDragId) return;
-            const touch = e.changedTouches[0];
-            const rect = mapImageWrapper.getBoundingClientRect();
-            let xPx = ((touch.clientX - rect.left) / rect.width) * PLANO_WIDTH;
-            let yPx = ((touch.clientY - rect.top) / rect.height) * PLANO_HEIGHT;
-
-            xPx = Math.max(10, Math.min(PLANO_WIDTH - 10, xPx));
-            yPx = Math.max(10, Math.min(PLANO_HEIGHT - 10, yPx));
-
-            stateEquipments[window.activeTouchDragId] = { x: xPx, y: yPx, estado: 'operativo' };
-            window.activeTouchDragId = null;
-            renderSidebar();
-            renderPlacedEquipments();
-            showToast("Equipo ubicado (Guarde en nube)");
-        });
-
         function showToast(msg) {
             const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-msg');
-            toastMsg.textContent = msg;
+            document.getElementById('toast-msg').textContent = msg;
             toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2500);
         }
 
-        // Restablecer mapa completo
         document.getElementById('btn-reset-map').addEventListener('click', () => {
-            if (confirm("¿Deseas quitar todos los equipos del plano?")) {
+            if (confirm("¿Quitar todos los equipos?")) {
                 stateEquipments = {};
                 renderSidebar();
                 renderPlacedEquipments();
@@ -766,23 +536,12 @@
             }
         });
 
-        // Resumen WhatsApp (Texto)
         document.getElementById('btn-generate-summary').addEventListener('click', () => {
-            const count = Object.keys(stateEquipments).length;
-            if (count === 0) {
-                alert("No hay equipos ubicados en el mapa para generar el reporte.");
-                return;
-            }
-            let text = `📌 *PARTE DE UBICACIÓN DE EQUIPOS - POZA H4*\n📅 Fecha: ${new Date().toLocaleDateString()}\n----------------------------------------\n`;
-            
+            let text = `📌 *PARTE DE UBICACIÓN - POZA H4*\n📅 Fecha: ${new Date().toLocaleDateString()}\n----------------------------------------\n`;
             Object.keys(stateEquipments).forEach(id => {
-                const data = stateEquipments[id];
-                const eq = flotaMaster.find(item => item.id === id);
-                if (eq) {
-                    text += `• *${eq.interno}* (${eq.empresa}) - ${eq.sub} | ${data.estado === 'detenido' ? '🔴 Detenido' : '🟢 Operativo'}\n`;
-                }
+                const eq = flotaMaster.find(i => i.id === id);
+                if (eq) text += `• *${eq.interno}* (${eq.empresa}) - ${eq.sub} | ${stateEquipments[id].estado === 'detenido' ? '🔴 Detenido' : '🟢 Operativo'}\n`;
             });
-
             document.getElementById('summary-text-box').textContent = text;
             document.getElementById('modal-summary').classList.remove('hidden');
             document.getElementById('modal-summary').classList.add('flex');
@@ -794,13 +553,9 @@
         });
 
         document.getElementById('btn-copy-summary').addEventListener('click', () => {
-            const text = document.getElementById('summary-text-box').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                showToast("Texto copiado al portapapeles");
-            });
+            navigator.clipboard.writeText(document.getElementById('summary-text-box').textContent).then(() => showToast("Copiado"));
         });
 
-        // Inicialización y carga automática al abrir la página
         renderSidebar();
         cargarPosicionesDesdeNube();
     </script>
