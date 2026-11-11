@@ -8,8 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas para captura del plano -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .canvas-container {
@@ -31,6 +33,7 @@
             cursor: move;
             z-index: 30;
             transition: transform 0.1s ease-out;
+            touch-action: none;
         }
         .placed-equipment:hover {
             z-index: 40;
@@ -39,14 +42,14 @@
             z-index: 50;
             opacity: 0.9;
         }
-        /* Scrollbars personalizados */
+        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #b41f25; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-[#b41f25] selection:text-white overflow-x-hidden">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-[#b41f25] selection:text-white overflow-x-hidden relative">
 
     <!-- Header Navigation -->
     <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 py-3 px-4 sticky top-0 z-40 shadow-lg">
@@ -59,17 +62,23 @@
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Listado de Equipos actualizado desde Planilla de Carga</p>
+                    <p class="text-xs text-slate-400">Sincronización en la Nube Activa (JSONBin.io)</p>
                 </div>
             </div>
 
             <!-- Acciones rápidas -->
             <div class="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
+                <button id="btn-save-positions" type="button" onclick="guardarPosicionesManual()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Nube
+                </button>
+                <button id="btn-download-image" type="button" onclick="descargarCapturaPlano()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i> Compartir Imagen (WhatsApp)
+                </button>
                 <button id="btn-reset-map" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-left"></i> Restablecer Flota
                 </button>
                 <button id="btn-generate-summary" type="button" class="px-4 py-1.5 rounded-xl bg-[#b41f25] hover:bg-[#9b1a1f] text-white text-xs font-bold shadow-lg shadow-[#b41f25]/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-brands fa-whatsapp text-sm"></i> Generar Resumen WhatsApp
+                    <i class="fa-brands fa-whatsapp text-sm"></i> Resumen Texto
                 </button>
             </div>
         </div>
@@ -87,20 +96,20 @@
                 <span id="flota-count" class="bg-slate-900 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">0 dispon.</span>
             </div>
 
-            <!-- Buscador Rápido y Desplegables de Selección Jerárquica -->
+            <!-- Buscador Rápido de Equipos por Interno/Nombre -->
             <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-2">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                    <input type="text" id="input-search-equip" placeholder="Buscar por interno (ej: EXC 01, CAM 08)..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
+                    <input type="text" id="input-search-equip" placeholder="Buscar por interno..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
                 </div>
 
+                <!-- Desplegables de Selección Jerárquica -->
                 <div class="grid grid-cols-2 gap-2">
                     <select id="filter-categoria-select" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
                         <option value="all">Todas las Categorías</option>
-                        <option value="Excavadoras">Excavadoras / Palas</option>
-                        <option value="Camiones">Camiones (Ruta/Volcador)</option>
+                        <option value="Camiones">Camiones</option>
                         <option value="Cisternas">Camiones Regadores</option>
-                        <option value="Combustible">Combustible / Lubricante</option>
+                        <option value="Excavadoras">Excavadoras / Palas</option>
                         <option value="Viales">Viales (Moto/Rodillo/Topo)</option>
                         <option value="Livianos">Livianos y Apoyo</option>
                         <option value="EquiposAuxiliares">Auxiliares</option>
@@ -118,7 +127,7 @@
             </div>
             
             <div class="p-2.5 bg-slate-900/40 border-t border-slate-700/60 text-[10px] text-slate-400 text-center">
-                💡 Arrastra el icono al plano. Doble clic en el mapa para devolverlo a la lista.
+                💡 Arrastra el icono al plano. Doble clic en el icono del plano para retirarlo.
             </div>
         </aside>
 
@@ -141,20 +150,95 @@
                 </div>
             </div>
 
-            <!-- Visor del Plano e Interacción con Pan & Zoom -->
+            <!-- Visor del Plano -->
             <div id="map-viewport" class="canvas-container flex-grow relative overflow-hidden flex items-center justify-center p-0 cursor-grab">
-                
-                <!-- Contenedor Transformable para Zoom/Pan -->
                 <div id="map-zoom-container" class="relative w-full h-full transform-gpu origin-top-left transition-transform duration-75">
-                    <!-- Imagen Real de Ingeniería (Plano Original de Fondo) -->
                     <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1200x800/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0">
-
-                    <!-- Layer donde se ubicarán dinámicamente los marcadores de equipos puestos en el mapa -->
                     <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
                 </div>
-
             </div>
         </main>
+    </div>
+
+    <!-- BOTÓN FLOTANTE PARA AGREGAR EQUIPOS -->
+    <button id="btn-add-custom-equip" onclick="abrirModalAgregarEquipo()" style="
+        position: fixed;
+        bottom: 25px;
+        left: 25px;
+        z-index: 9999;
+        background-color: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 50px;
+        font-size: 13px;
+        font-weight: 700;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.4);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    ">
+        <i class="fa-solid fa-circle-plus"></i> Agregar Equipo
+    </button>
+
+    <!-- Modal para Agregar Equipo Nuevo -->
+    <div id="modal-add-equip" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-truck-monster text-blue-500"></i> Registrar Nuevo Equipo
+                </h3>
+                <button onclick="cerrarModalAgregarEquipo()" class="text-slate-400 hover:text-white text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Número de Interno / Nombre:</label>
+                    <input type="text" id="nuevo-interno" placeholder="Ej: CAM 01 AB" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Empresa:</label>
+                    <select id="nuevo-empresa" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="BSD">BSD</option>
+                        <option value="AB">AB</option>
+                        <option value="SMG">SMG</option>
+                        <option value="IIRR">IIRR</option>
+                        <option value="OTRO">Otra Empresa</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tipo de Equipo:</label>
+                    <select id="nuevo-tipo" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="Fuera de Ruta Zoomlion">Fuera de Ruta Zoomlion</option>
+                        <option value="Fuera de Ruta Sany">Fuera de Ruta Sany</option>
+                        <option value="Camión Volcador">Camión Volcador</option>
+                        <option value="Camión Combustible">Camión Combustible</option>
+                        <option value="Camión Lubricante">Camión Lubricante</option>
+                        <option value="Camión Regador">Camión Regador</option>
+                        <option value="Camión Regador Semi">Camión Regador Semi</option>
+                        <option value="Cargadora">Cargadora</option>
+                        <option value="Excavadora Hidráulica">Excavadora Hidráulica</option>
+                        <option value="Motoniveladora">Motoniveladora</option>
+                        <option value="Rodillo">Rodillo</option>
+                        <option value="Topadora">Topadora</option>
+                        <option value="Camioneta">Camioneta</option>
+                        <option value="Combi">Combi</option>
+                        <option value="Manipulador">Manipulador</option>
+                        <option value="Generador">Generador</option>
+                        <option value="Luminaria">Luminaria</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-2">
+                <button onclick="cerrarModalAgregarEquipo()" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold">Cancelar</button>
+                <button onclick="registrarYUbicarEquipoNuevo()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow">Registrar y Añadir</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Resumen WhatsApp -->
@@ -182,50 +266,47 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-[#b41f25] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
+    <div id="toast" class="fixed bottom-20 left-5 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i>
         <span id="toast-msg">Notificación</span>
     </div>
 
     <!-- Application Script -->
     <script>
-        // ESTRUCTURA ACTUALIZADA EXACTA CON EL LISTADO EXTRAÍDO DE LA PLANILLA
+        const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
+        const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
+
+        // ESTRUCTURA EXACTA SEGÚN PLANILLA DE CARGA Y ESPECIFICACIÓN DE MARCAS
         const equiposEstructura = {
-            "Excavadoras": {
-                "Excavadora Hidráulica": [
-                    { interno: "EXC 01 AB", empresa: "AB" },
-                    { interno: "EXC 02 BSD", empresa: "BSD" },
-                    { interno: "EXC 03 BSD", empresa: "BSD" },
-                    { interno: "EXC 04 SMG", empresa: "SMG" },
-                    { interno: "EXC 05 SMG", empresa: "SMG" }
-                ],
-                "Cargadora": [
-                    { interno: "PAL 01 AB", empresa: "AB" },
-                    { interno: "PAL 02 AB", empresa: "AB" },
-                    { interno: "PAL 03 BSD", empresa: "BSD" },
-                    { interno: "PAL 04 SMG", empresa: "SMG" }
-                ]
-            },
             "Camiones": {
-                "Camión Fuera de Ruta": [
+                "Fuera de Ruta Zoomlion": [
                     { interno: "CAM 01 AB", empresa: "AB" },
                     { interno: "CAM 02 AB", empresa: "AB" },
+                    { interno: "CAM 10 BSD", empresa: "BSD" },
+                    { interno: "CAM 11 BSD", empresa: "BSD" }
+                ],
+                "Fuera de Ruta Sany": [
                     { interno: "CAM 03 BSD", empresa: "BSD" },
                     { interno: "CAM 04 BSD", empresa: "BSD" },
                     { interno: "CAM 05 BSD", empresa: "BSD" },
                     { interno: "CAM 06 BSD", empresa: "BSD" },
                     { interno: "CAM 07 BSD", empresa: "BSD" },
                     { interno: "CAM 08 BSD", empresa: "BSD" },
-                    { interno: "CAM 09 BSD", empresa: "BSD" },
-                    { interno: "CAM 10 BSD", empresa: "BSD" },
-                    { interno: "CAM 11 BSD", empresa: "BSD" }
+                    { interno: "CAM 09 BSD", empresa: "BSD" }
                 ],
-                "Camión Volcador / Chasis": [
+                "Camión Volcador": [
                     { interno: "CAM 12 SMG", empresa: "SMG" },
                     { interno: "CAM 13 SMG", empresa: "SMG" },
                     { interno: "CAM 14 SMG", empresa: "SMG" },
                     { interno: "CAM 15 SMG", empresa: "SMG" },
                     { interno: "CAM 16 SMG", empresa: "SMG" },
                     { interno: "CAM 17 SMG", empresa: "SMG" }
+                ],
+                "Camión Combustible": [
+                    { interno: "AH 162 HH", empresa: "SMG" }
+                ],
+                "Camión Lubricante": [
+                    { interno: "INT-242", empresa: "BSD" }
                 ]
             },
             "Cisternas": {
@@ -235,17 +316,28 @@
                     { interno: "REG 06 BSD", empresa: "BSD" },
                     { interno: "REG 07 BSD", empresa: "BSD" },
                     { interno: "REG 08 BSD", empresa: "BSD" },
-                    { interno: "REG 09 SMG", empresa: "SMG" },
-                    { interno: "REG 03 AB (Semi)", empresa: "AB" },
-                    { interno: "REG 04 AB (Semi)", empresa: "AB" },
-                    { interno: "REG 05 AB (Semi)", empresa: "AB" },
-                    { interno: "REG 10 SMG (Semi)", empresa: "SMG" }
+                    { interno: "REG 09 SMG", empresa: "SMG" }
+                ],
+                "Camión Regador Semi": [
+                    { interno: "REG 03 AB", empresa: "AB" },
+                    { interno: "REG 04 AB", empresa: "AB" },
+                    { interno: "REG 05 AB", empresa: "AB" },
+                    { interno: "REG 10 SMG", empresa: "SMG" }
                 ]
             },
-            "Combustible": {
-                "Camión Combustible / Lubricante": [
-                    { interno: "AH 162 HH", empresa: "SMG" },
-                    { interno: "INT-242", empresa: "BSD" }
+            "Excavadoras": {
+                "Cargadora": [
+                    { interno: "PAL 01 AB", empresa: "AB" },
+                    { interno: "PAL 02 AB", empresa: "AB" },
+                    { interno: "PAL 03 BSD", empresa: "BSD" },
+                    { interno: "PAL 04 SMG", empresa: "SMG" }
+                ],
+                "Excavadora Hidráulica": [
+                    { interno: "EXC 01 AB", empresa: "AB" },
+                    { interno: "EXC 02 BSD", empresa: "BSD" },
+                    { interno: "EXC 03 BSD", empresa: "BSD" },
+                    { interno: "EXC 04 SMG", empresa: "SMG" },
+                    { interno: "EXC 05 SMG", empresa: "SMG" }
                 ]
             },
             "Viales": {
@@ -258,7 +350,7 @@
                     { interno: "MOT 06 SMG", empresa: "SMG" },
                     { interno: "M-28", empresa: "SMG" }
                 ],
-                "Rodillo Compactador": [
+                "Rodillo": [
                     { interno: "ROD 01 AB", empresa: "AB" },
                     { interno: "ROD 02 BSD", empresa: "BSD" },
                     { interno: "ROD 03 BSD", empresa: "BSD" },
@@ -272,9 +364,6 @@
                 ]
             },
             "Livianos": {
-                "Manipulador Telescópico": [
-                    { interno: "HTL 4017", empresa: "BSD" }
-                ],
                 "Camioneta": [
                     { interno: "AG 239 KT", empresa: "AB" },
                     { interno: "V-23 (AF 848 YZ)", empresa: "SMG" },
@@ -285,27 +374,30 @@
                     { interno: "V-34", empresa: "SMG" },
                     { interno: "AG 990 TD", empresa: "AB" }
                 ],
-                "Minibus / Combi": [
-                    { interno: "AG 807 LO", empresa: "SIN ASIGNAR" },
-                    { interno: "COMBI 1", empresa: "AB" },
-                    { interno: "COMBI 2", empresa: "AB" }
+                "Combi": [
+                    { interno: "AG 807 LO", empresa: "AB" },
+                    { interno: "Combi 1", empresa: "AB" },
+                    { interno: "Combi 2", empresa: "AB" }
+                ],
+                "Manipulador": [
+                    { interno: "HTL 4017", empresa: "BSD" }
                 ]
             },
             "EquiposAuxiliares": {
-                "Grupo Electrógeno": [
-                    { interno: "GEN 6", empresa: "SMG" }
+                "Generador": [
+                    { interno: "Generador 6", empresa: "SMG" }
                 ],
                 "Luminaria": [
-                    { interno: "LUM SMG (sin int)", empresa: "SMG" },
-                    { interno: "LUM SMG 2", empresa: "SMG" },
-                    { interno: "LUM SMG ??", empresa: "SMG" },
-                    { interno: "LUM IIRR 1", empresa: "IIRR" },
-                    { interno: "LUM IIRR 2", empresa: "IIRR" },
-                    { interno: "LUM IIRR 3", empresa: "IIRR" },
-                    { interno: "LUM IIRR 5", empresa: "IIRR" },
-                    { interno: "LUM IIRR 4", empresa: "IIRR" },
-                    { interno: "LUM IIRR 6", empresa: "IIRR" },
-                    { interno: "LUM IIRR 7", empresa: "IIRR" }
+                    { interno: "sin interno", empresa: "SMG" },
+                    { interno: "Luminaria 2", empresa: "SMG" },
+                    { interno: "Luminaria ??", empresa: "SMG" },
+                    { interno: "Luminaria 1", empresa: "IIRR" },
+                    { interno: "Luminaria 2", empresa: "IIRR" },
+                    { interno: "Luminaria 3", empresa: "IIRR" },
+                    { interno: "Luminaria 5", empresa: "IIRR" },
+                    { interno: "Luminaria 4", empresa: "IIRR" },
+                    { interno: "Luminaria 6", empresa: "IIRR" },
+                    { interno: "Luminaria 7", empresa: "IIRR" }
                 ]
             }
         };
@@ -313,9 +405,8 @@
         function getIconForEquipo(sub) {
             const n = sub.toLowerCase();
             if (n.includes("excavadora")) return "fa-bucket";
-            if (n.includes("cargadora") || n.includes("pala")) return "fa-dumpster";
-            if (n.includes("fuera de ruta")) return "fa-truck-field";
-            if (n.includes("volcador") || n.includes("chasis")) return "fa-truck-ramp-box";
+            if (n.includes("cargadora")) return "fa-dumpster";
+            if (n.includes("camión") || n.includes("camion") || n.includes("fuera de ruta")) return "fa-truck-field";
             if (n.includes("regador")) return "fa-faucet-drip";
             if (n.includes("combustible") || n.includes("lubricante")) return "fa-gas-pump";
             if (n.includes("motoniveladora")) return "fa-road";
@@ -323,13 +414,12 @@
             if (n.includes("topadora")) return "fa-shield-halved";
             if (n.includes("manipulador")) return "fa-boxes-packing";
             if (n.includes("camioneta")) return "fa-truck-pickup";
-            if (n.includes("minibus") || n.includes("combi")) return "fa-bus";
-            if (n.includes("electrógeno") || n.includes("grupo")) return "fa-bolt";
+            if (n.includes("combi")) return "fa-bus";
+            if (n.includes("generador")) return "fa-bolt";
             if (n.includes("luminaria")) return "fa-lightbulb";
             return "fa-truck-monster";
         }
 
-        // Obtener esquema de colores según la empresa: AB = Azul, BSD = Rojo, SMG = Verde, IIRR = Púrpura
         function getColorByEmpresa(empresa) {
             const emp = (empresa || '').toUpperCase().trim();
             if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-300", shadow: "shadow-blue-600/50" };
@@ -339,26 +429,28 @@
             return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", shadow: "shadow-slate-700/50" };
         }
 
-        // Construir la lista plana de flota
-        const flotaMaster = [];
-        let idCounter = 1;
+        let flotaMaster = [];
 
-        Object.keys(equiposEstructura).forEach(cat => {
-            Object.keys(equiposEstructura[cat]).forEach(sub => {
-                equiposEstructura[cat][sub].forEach(eq => {
-                    flotaMaster.push({
-                        id: `eq_${idCounter++}`,
-                        cat: cat,
-                        sub: sub,
-                        interno: eq.interno,
-                        empresa: eq.empresa,
-                        icono: getIconForEquipo(sub)
+        function reconstruirFlotaMaster() {
+            flotaMaster.length = 0;
+            let idCounter = 1;
+            Object.keys(equiposEstructura).forEach(cat => {
+                Object.keys(equiposEstructura[cat]).forEach(sub => {
+                    equiposEstructura[cat][sub].forEach(eq => {
+                        flotaMaster.push({
+                            id: `eq_${idCounter++}`,
+                            cat: cat,
+                            sub: sub,
+                            interno: eq.interno,
+                            empresa: eq.empresa,
+                            icono: getIconForEquipo(sub)
+                        });
                     });
                 });
             });
-        });
+        }
 
-        let stateEquipments = JSON.parse(localStorage.getItem('obra_equipments_placed')) || {};
+        let stateEquipments = {};
 
         const sidebarList = document.getElementById('equipment-sidebar-list');
         const dropLayer = document.getElementById('equipment-drop-layer');
@@ -366,7 +458,6 @@
         const zoomContainer = document.getElementById('map-zoom-container');
         const flotaCount = document.getElementById('flota-count');
 
-        // LÓGICA DE ZOOM Y PAN DEL MAPA
         let currentZoom = 1;
         let panX = 0;
         let panY = 0;
@@ -385,10 +476,7 @@
         }
 
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            if (currentZoom < 4) {
-                currentZoom += 0.25;
-                updateZoomTransform();
-            }
+            if (currentZoom < 4) { currentZoom += 0.25; updateZoomTransform(); }
         });
 
         document.getElementById('btn-zoom-out').addEventListener('click', () => {
@@ -400,17 +488,13 @@
         });
 
         document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-            currentZoom = 1;
-            panX = 0;
-            panY = 0;
-            updateZoomTransform();
+            currentZoom = 1; panX = 0; panY = 0; updateZoomTransform();
         });
 
         mapViewport.addEventListener('wheel', (e) => {
             e.preventDefault();
             const delta = e.deltaY < 0 ? 0.15 : -0.15;
-            const newZoom = Math.max(0.6, Math.min(4, currentZoom + delta));
-            currentZoom = newZoom;
+            currentZoom = Math.max(0.6, Math.min(4, currentZoom + delta));
             if (currentZoom <= 1) { panX = 0; panY = 0; }
             updateZoomTransform();
         }, { passive: false });
@@ -437,6 +521,166 @@
             }
         });
 
+        function abrirModalAgregarEquipo() {
+            document.getElementById('modal-add-equip').classList.remove('hidden');
+            document.getElementById('modal-add-equip').classList.add('flex');
+        }
+
+        function cerrarModalAgregarEquipo() {
+            document.getElementById('modal-add-equip').classList.add('hidden');
+            document.getElementById('modal-add-equip').classList.remove('flex');
+        }
+
+        function registrarYUbicarEquipoNuevo() {
+            const internoInput = document.getElementById('nuevo-interno').value.trim();
+            const empresaInput = document.getElementById('nuevo-empresa').value;
+            const tipoInput = document.getElementById('nuevo-tipo').value;
+
+            if (!internoInput) {
+                alert("Por favor ingresa un número de interno o nombre.");
+                return;
+            }
+
+            let categoriaPrincipal = "Camiones";
+            if (tipoInput.includes("Excavadora") || tipoInput.includes("Cargadora")) {
+                categoriaPrincipal = "Excavadoras";
+            } else if (tipoInput.includes("Regador")) {
+                categoriaPrincipal = "Cisternas";
+            } else if (tipoInput.includes("Motoniveladora") || tipoInput.includes("Rodillo") || tipoInput.includes("Topadora")) {
+                categoriaPrincipal = "Viales";
+            } else if (tipoInput.includes("Camioneta") || tipoInput.includes("Combi") || tipoInput.includes("Manipulador")) {
+                categoriaPrincipal = "Livianos";
+            } else if (tipoInput.includes("Generador") || tipoInput.includes("Luminaria")) {
+                categoriaPrincipal = "EquiposAuxiliares";
+            }
+
+            if (!equiposEstructura[categoriaPrincipal][tipoInput]) {
+                equiposEstructura[categoriaPrincipal][tipoInput] = [];
+            }
+
+            equiposEstructura[categoriaPrincipal][tipoInput].push({
+                interno: internoInput,
+                empresa: empresaInput
+            });
+
+            reconstruirFlotaMaster();
+            
+            const equipoCreado = flotaMaster.find(e => e.interno === internoInput && e.empresa === empresaInput && e.sub === tipoInput);
+            if (equipoCreado) {
+                stateEquipments[equipoCreado.id] = { x: 50, y: 50, estado: 'operativo' };
+            }
+
+            cerrarModalAgregarEquipo();
+            document.getElementById('nuevo-interno').value = '';
+            renderSidebar();
+            renderPlacedEquipments();
+            showToast(`✅ ${tipoInput} (${internoInput}) agregado y ubicado`);
+        }
+
+        async function cargarPosicionesDesdeNube() {
+            showToast("🔄 Sincronizando con la nube...");
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`, {
+                    headers: { "X-Master-Key": JSONBIN_KEY }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.record && typeof data.record === 'object') {
+                        stateEquipments = data.record;
+                        renderSidebar();
+                        renderPlacedEquipments();
+                        showToast("✅ Sincronizado correctamente");
+                    }
+                }
+            } catch (err) {
+                console.error("Error al cargar:", err);
+                showToast("⚠️ Modo offline activado");
+            }
+        }
+
+        async function guardarPosicionesManual() {
+            showToast("⏳ Guardando cambios en la nube...");
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Master-Key": JSONBIN_KEY
+                    },
+                    body: JSON.stringify(stateEquipments)
+                });
+
+                if (res.ok) {
+                    showToast("🌐 ¡Guardado para todos los celulares!");
+                } else {
+                    showToast("❌ Error al guardar");
+                }
+            } catch (err) {
+                console.error("Error al guardar:", err);
+                showToast("❌ Sin conexión a la nube");
+            }
+        }
+
+        async function descargarCapturaPlano() {
+            showToast("📸 Generando imagen del plano...");
+            try {
+                const canvas = await html2canvas(zoomContainer, {
+                    useCORS: true,
+                    allowTaint: true,
+                    scale: 2
+                });
+
+                canvas.toBlob(async (blob) => {
+                    const fecha = new Date().toISOString().slice(0, 10);
+                    const nombreArchivo = `Plano_Obra_PozaH4_${fecha}.png`;
+                    const file = new File([blob], nombreArchivo, { type: 'image/png' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                title: 'Ubicación de Equipos - Poza H4',
+                                text: 'Plano actualizado de la flota en obra.',
+                                files: [file]
+                            });
+                            showToast("✅ Imagen compartida con éxito");
+                            return;
+                        } catch (err) {
+                            console.log("Descargando archivo...");
+                        }
+                    }
+
+                    const link = document.createElement('a');
+                    link.download = nombreArchivo;
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                    showToast("💾 Imagen descargada en tu dispositivo");
+                }, 'image/png');
+            } catch (err) {
+                console.error("Error al capturar imagen:", err);
+                showToast("❌ No se pudo generar la imagen");
+            }
+        }
+
+        dropLayer.addEventListener('dragover', (e) => e.preventDefault());
+        dropLayer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const id = e.dataTransfer.getData('text/plain');
+            if (!id) return;
+
+            const rect = zoomContainer.getBoundingClientRect();
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            let y = ((e.clientY - rect.top) / rect.height) * 100;
+
+            x = Math.max(1, Math.min(99, x));
+            y = Math.max(1, Math.min(99, y));
+
+            stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
+            renderSidebar();
+            renderPlacedEquipments();
+            showToast("Equipo ubicado (Guarde en nube para aplicar)");
+        });
+
         let selectedCategory = 'all';
         let selectedSubcategory = 'all';
         let searchQuery = '';
@@ -448,7 +692,6 @@
         filterCatSelect.addEventListener('change', function() {
             selectedCategory = this.value;
             selectedSubcategory = 'all';
-
             filterSubSelect.innerHTML = '<option value="all">Todos los Tipos</option>';
 
             if (selectedCategory !== 'all' && equiposEstructura[selectedCategory]) {
@@ -462,7 +705,6 @@
             } else {
                 filterSubSelect.disabled = true;
             }
-
             renderSidebar();
         });
 
@@ -550,11 +792,9 @@
                     <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
                         <div class="relative ${colorTheme.bg} border ${colorTheme.border} px-1.5 py-1 rounded-lg shadow-md ${colorTheme.shadow} flex items-center justify-center text-white transition-transform duration-150 group-hover:scale-125">
                             <i class="fa-solid ${eq.icono} text-[10px]"></i>
-                            
-                            <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Clic para alternar estado (Operativo / Detenido)">
+                            <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
                             </button>
                         </div>
-
                         <div class="mt-0.5 px-1 py-0 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
                             ${eq.interno}
                         </div>
@@ -577,18 +817,18 @@
 
                 let isDragging = false;
 
-                elem.addEventListener('mousedown', (e) => {
+                const startDrag = (e) => {
                     if (e.target.classList.contains('btn-change-status')) return;
                     isDragging = true;
                     elem.classList.add('active-drag');
                     e.stopPropagation();
-                });
+                };
 
-                window.addEventListener('mousemove', (e) => {
+                const moveDrag = (clientX, clientY) => {
                     if (!isDragging) return;
                     const rect = zoomContainer.getBoundingClientRect();
-                    let x = ((e.clientX - rect.left) / rect.width) * 100;
-                    let y = ((e.clientY - rect.top) / rect.height) * 100;
+                    let x = ((clientX - rect.left) / rect.width) * 100;
+                    let y = ((clientY - rect.top) / rect.height) * 100;
 
                     x = Math.max(1, Math.min(99, x));
                     y = Math.max(1, Math.min(99, y));
@@ -597,85 +837,76 @@
                     elem.style.top = `${y}%`;
                     stateEquipments[id].x = x;
                     stateEquipments[id].y = y;
-                });
+                };
 
-                window.addEventListener('mouseup', () => {
+                const stopDrag = () => {
                     if (isDragging) {
                         isDragging = false;
                         elem.classList.remove('active-drag');
-                        saveState();
                     }
+                };
+
+                elem.addEventListener('mousedown', startDrag);
+                window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+                window.addEventListener('mouseup', stopDrag);
+
+                elem.addEventListener('touchstart', (e) => startDrag(e.touches[0]), {passive: true});
+                window.addEventListener('touchmove', (e) => { if (isDragging) moveDrag(e.touches[0].clientX, e.touches[0].clientY); }, {passive: true});
+                window.addEventListener('touchend', stopDrag);
+
+                elem.addEventListener('dblclick', () => {
+                    delete stateEquipments[id];
+                    renderSidebar();
+                    renderPlacedEquipments();
+                    showToast("Equipo devuelto al panel");
                 });
 
                 elem.querySelector('.btn-change-status').addEventListener('click', (e) => {
                     e.stopPropagation();
                     stateEquipments[id].estado = stateEquipments[id].estado === 'detenido' ? 'operativo' : 'detenido';
-                    saveState();
                     renderPlacedEquipments();
-                });
-
-                elem.addEventListener('dblclick', () => {
-                    delete stateEquipments[id];
-                    saveState();
-                    renderSidebar();
-                    renderPlacedEquipments();
-                    showToast(`${eq.interno} devuelto a la lista`);
                 });
 
                 dropLayer.appendChild(elem);
             });
         }
 
-        mapViewport.addEventListener('dragover', (e) => e.preventDefault());
-
-        mapViewport.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const id = e.dataTransfer.getData('text/plain');
-            if (!id) return;
-
-            const rect = zoomContainer.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-            stateEquipments[id] = {
-                x: Math.max(1, Math.min(99, x)),
-                y: Math.max(1, Math.min(99, y)),
-                estado: 'operativo'
-            };
-
-            saveState();
-            renderSidebar();
-            renderPlacedEquipments();
-            showToast("Icono de equipo posicionado en el plano");
-        });
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
 
         document.getElementById('btn-reset-map').addEventListener('click', () => {
-            stateEquipments = {};
-            saveState();
-            renderSidebar();
-            renderPlacedEquipments();
-            showToast("Se han restablecido los equipos al panel de flota");
+            if (confirm("¿Deseas quitar todos los equipos del plano?")) {
+                stateEquipments = {};
+                renderSidebar();
+                renderPlacedEquipments();
+                showToast("Mapa restablecido");
+            }
         });
 
         document.getElementById('btn-generate-summary').addEventListener('click', () => {
-            const placedKeys = Object.keys(stateEquipments);
-            if (placedKeys.length === 0) {
-                showToast("Primero ubique algunos equipos sobre el plano");
+            const count = Object.keys(stateEquipments).length;
+            if (count === 0) {
+                alert("No hay equipos ubicados en el mapa para generar el reporte.");
                 return;
             }
-
-            const fecha = new Date().toLocaleDateString('es-AR');
-            let txt = `📍 *UBICACIÓN Y ESTADO DE EQUIPOS EN OBRA - ${fecha}*\n`;
-            txt += `====================================\n\n`;
-
-            placedKeys.forEach(id => {
+            let text = `📌 *PARTE DE UBICACIÓN DE EQUIPOS - POZA H4*\n📅 Fecha: ${new Date().toLocaleDateString()}\n----------------------------------------\n`;
+            
+            Object.keys(stateEquipments).forEach(id => {
+                const data = stateEquipments[id];
                 const eq = flotaMaster.find(item => item.id === id);
-                const st = stateEquipments[id];
-                const estadoIcon = st.estado === 'detenido' ? '🔴 DETENIDO' : '🟢 EN OPERACIÓN';
-                txt += `• *${eq.sub} (${eq.interno} - ${eq.empresa})* -> ${estadoIcon}\n`;
+                if (eq) {
+                    text += `• *${eq.interno}* (${eq.empresa}) - ${eq.sub} | ${data.estado === 'detenido' ? '🔴 Detenido' : '🟢 Operativo'}\n`;
+                }
             });
 
-            document.getElementById('summary-text-box').textContent = txt;
+            document.getElementById('summary-text-box').textContent = text;
             document.getElementById('modal-summary').classList.remove('hidden');
             document.getElementById('modal-summary').classList.add('flex');
         });
@@ -686,34 +917,15 @@
         });
 
         document.getElementById('btn-copy-summary').addEventListener('click', () => {
-            const txt = document.getElementById('summary-text-box').textContent;
-            const ta = document.createElement('textarea');
-            ta.value = txt;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showToast("Resumen copiado para WhatsApp");
+            const text = document.getElementById('summary-text-box').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Texto copiado al portapapeles");
+            });
         });
 
-        function saveState() {
-            localStorage.setItem('obra_equipments_placed', JSON.stringify(stateEquipments));
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        // Init
+        reconstruirFlotaMaster();
         renderSidebar();
-        renderPlacedEquipments();
+        cargarPosicionesDesdeNube();
     </script>
 </body>
 </html>
