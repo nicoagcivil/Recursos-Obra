@@ -220,7 +220,6 @@
                         <option value="Camión Volcador">Camión Volcador</option>
                         <option value="Camión Combustible">Camión Combustible</option>
                         <option value="Camión Lubricante">Camión Lubricante</option>
-                        <option value="Camión Taller">Camión Taller</option>
                         <option value="Camión Regador">Camión Regador</option>
                         <option value="Camión Regador Semi">Camión Regador Semi</option>
                         <option value="Cargadora">Cargadora</option>
@@ -404,13 +403,10 @@
             }
         };
 
-        // MAPEO COMPLETO DE LOS 15 ARCHIVOS .JPG SUBIDOS AL REPOSITORIO
+        // RUTAS DIRECTAS A LOS ARCHIVOS .JPG EN LA RAÍZ DEL REPOSITORIO
         function getIconDataForEquipo(sub) {
             const n = sub.toLowerCase();
-            if (n.includes("cargadora")) {
-                return { type: "img", src: "cargadora.jpg", fallbackIcon: "fa-bucket" };
-            }
-            if (n.includes("excavadora")) {
+            if (n.includes("excavadora") || n.includes("cargadora")) {
                 return { type: "img", src: "excavadora.jpg", fallbackIcon: "fa-bucket" };
             }
             if (n.includes("rodillo")) {
@@ -422,36 +418,19 @@
             if (n.includes("luminaria")) {
                 return { type: "img", src: "luminaria.jpg", fallbackIcon: "fa-lightbulb" };
             }
-            if (n.includes("generador")) {
-                return { type: "img", src: "generador.jpg", fallbackIcon: "fa-bolt" };
-            }
             if (n.includes("fuera de ruta")) {
                 return { type: "img", src: "camion fuera de ruta.jpg", fallbackIcon: "fa-truck-monster" };
-            }
-            if (n.includes("regador semi")) {
-                return { type: "img", src: "regador semi.jpg", fallbackIcon: "fa-truck-droplet" };
-            }
-            if (n.includes("regador")) {
-                return { type: "img", src: "regador.jpg", fallbackIcon: "fa-truck-droplet" };
-            }
-            if (n.includes("combustible")) {
-                return { type: "img", src: "combustible.jpg", fallbackIcon: "fa-gas-pump" };
-            }
-            if (n.includes("lubricante") || n.includes("taller")) {
-                return { type: "img", src: "taller mecanico.jpg", fallbackIcon: "fa-wrench" };
-            }
-            if (n.includes("manipulador")) {
-                return { type: "img", src: "manipulador.jpg", fallbackIcon: "fa-boxes-packing" };
             }
             if (n.includes("camioneta")) {
                 return { type: "img", src: "camioneta.jpg", fallbackIcon: "fa-truck-pickup" };
             }
-            if (n.includes("combi")) {
-                return { type: "img", src: "combi.jpg", fallbackIcon: "fa-bus" };
-            }
-            if (n.includes("camión") || n.includes("camion")) {
+            if (n.includes("camión") || n.includes("camion") || n.includes("regador")) {
                 return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-field" };
             }
+            if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
+            if (n.includes("manipulador")) return { type: "fa", icon: "fa-boxes-packing" };
+            if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
+            if (n.includes("generador")) return { type: "fa", icon: "fa-bolt" };
             
             return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-monster" };
         }
@@ -491,11 +470,14 @@
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
+                    // Luminancia (0 = negro puro, 255 = blanco puro)
                     const lum = (r * 0.299 + g * 0.587 + b * 0.114);
 
                     if (lum > 215) {
-                        data[i + 3] = 0; // Fondo blanco -> 100% transparente
+                        // Fondo blanco -> 100% transparente
+                        data[i + 3] = 0;
                     } else {
+                        // Trazos oscuros -> color sólido de la empresa con bordes suavizados
                         const alpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
                         data[i] = rgb[0];
                         data[i + 1] = rgb[1];
@@ -512,6 +494,7 @@
             img.src = src;
         }
 
+        // Aplica el PNG transparente coloreado a todas las imágenes del mapa y barra lateral
         function hidratarIconosTransparentes() {
             document.querySelectorAll('img[data-tint-src]').forEach(imgEl => {
                 const src = imgEl.getAttribute('data-tint-src');
