@@ -6,12 +6,12 @@
     <title>Ubicación de Equipos en Obra - Poza H4</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome Icons (para interfaz) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2canvas para captura del plano -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .canvas-container {
@@ -42,13 +42,11 @@
             z-index: 50;
             opacity: 0.9;
         }
-        .svg-icon {
-            display: inline-block;
-            width: 1.25rem;
-            height: 1.25rem;
-            fill: currentColor;
+        /* Convierte las siluetas negras sobre fondo blanco en blanco nítido sobre colores oscuros */
+        .equip-img-icon {
+            mix-blend-mode: multiply;
+            filter: invert(1) brightness(2);
         }
-        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -68,17 +66,17 @@
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
                         Mapa Interactivo de Flota
                     </h1>
-                    <p class="text-xs text-slate-400">Sincronización en la Nube (JSONBin.io)</p>
+                    <p class="text-xs text-slate-400">Sincronización en la Nube Activa (JSONBin.io)</p>
                 </div>
             </div>
 
             <!-- Acciones rápidas -->
             <div class="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
                 <button id="btn-save-positions" type="button" onclick="guardarPosicionesManual()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Nube
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Nube
                 </button>
                 <button id="btn-download-image" type="button" onclick="descargarCapturaPlano()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-camera"></i> Compartir Imagen
+                    <i class="fa-solid fa-camera"></i> Compartir Imagen (Wsp)
                 </button>
                 <button id="btn-reset-map" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-left"></i> Restablecer Flota
@@ -102,7 +100,7 @@
                 <span id="flota-count" class="bg-slate-900 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">0 dispon.</span>
             </div>
 
-            <!-- Buscador Rápido de Equipos -->
+            <!-- Buscador Rápido -->
             <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-2">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
@@ -128,19 +126,17 @@
             </div>
 
             <!-- Lista de Equipos Arrastrables -->
-            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto">
-                <!-- Se puebla dinámicamente -->
-            </div>
+            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto"></div>
             
             <div class="p-2.5 bg-slate-900/40 border-t border-slate-700/60 text-[10px] text-slate-400 text-center">
-                💡 Arrastra el icono al plano. Doble clic para devolverlo.
+                💡 Arrastra el icono al plano. Doble clic en el icono del plano para retirarlo.
             </div>
         </aside>
 
         <!-- Main Map Area (Derecha) -->
         <main class="flex-grow bg-slate-950 border border-slate-700 rounded-2xl relative overflow-hidden flex flex-col shadow-2xl">
             
-            <!-- Controles de Zoom y Movimiento -->
+            <!-- Controles de Zoom -->
             <div class="absolute top-4 right-4 z-30 flex flex-col bg-slate-900/90 border border-slate-700 rounded-xl p-1 shadow-2xl backdrop-blur-md gap-1">
                 <button id="btn-zoom-in" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs font-bold transition-all shadow" title="Acercar (Zoom +)">
                     <i class="fa-solid fa-magnifying-glass-plus"></i>
@@ -282,23 +278,6 @@
         const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
 
-        // DICCIONARIO DE SVG VECTORIALES DE ALTA CALIDAD PARA CADA TIPO DE EQUIPO
-        const SVG_ICONS = {
-            excavadora: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 18h2a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2v-2a2 2 0 0 0-2-2h-3l-2.7-3.6A2 2 0 0 0 9.7 4.5H5a1 1 0 0 0-1 1v10.1A3 3 0 0 0 2 18.5a3 3 0 0 0 3 3h12a3 3 0 0 0 2-3.5zM6 6.5h3.2l2.25 3H6V6.5zm-1 12a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm11 0a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>`,
-            cargadora: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 15l-3-7h-3V5a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v5H4.5A2.5 2.5 0 0 0 2 12.5V17h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-2zM5 18a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm12 0a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>`,
-            rodillo: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-7a2 2 0 1 1-2 2 2 2 0 0 1 2-2zm6-1h4l3 3h4v4h-2a3 3 0 0 1-6 0h-3v-7zm9 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>`,
-            camion: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M20 8h-3V4H3a1 1 0 0 0-1 1v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-5l-2-3zM6 18a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm12 0a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>`,
-            motoniveladora: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M1 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm18 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm-7-9h3l2 4h-5V7zm-9 6h16v1H3v-1z"/></svg>`,
-            topadora: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M2 17h20v2H2zm2-4h14l3-5H9l-2 3H4v2z"/></svg>`,
-            cisterna: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 9a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v5h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1V9zM6 16a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm10 0a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>`,
-            combustible: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a1 1 0 0 0-1 1v3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6a1 1 0 0 0-1-1h-1V3a1 1 0 0 0-1-1zm6 4v11a1 1 0 0 0 2 0V9a1 1 0 0 0-2-3z"/></svg>`,
-            camioneta: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 10l-3-4H5a2 2 0 0 0-2 2v6h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-4zM7 16a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm10 0a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>`,
-            combi: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10h1v2h-2a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H3v-2zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>`,
-            luminaria: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M11 2h2v10h-2V2zm-3 8h8v2H8v-2zm-3 9h14v3H5v-3zm7-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>`,
-            generador: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm1 14h-2v-3H9l4-7v4h2l-4 6z"/></svg>`,
-            default: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>`
-        };
-
         const equiposEstructura = {
             "Camiones": {
                 "Fuera de Ruta Zoomlion": [
@@ -424,21 +403,39 @@
             }
         };
 
-        function getIconSVGForEquipo(sub) {
+        // ASOCIACIÓN DIRECTA A LAS IMÁGENES GENERADAS EN LA CARPETA img/
+        function getIconDataForEquipo(sub) {
             const n = sub.toLowerCase();
-            if (n.includes("excavadora")) return SVG_ICONS.excavadora;
-            if (n.includes("cargadora")) return SVG_ICONS.cargadora;
-            if (n.includes("rodillo")) return SVG_ICONS.rodillo;
-            if (n.includes("motoniveladora")) return SVG_ICONS.motoniveladora;
-            if (n.includes("topadora")) return SVG_ICONS.topadora;
-            if (n.includes("regador")) return SVG_ICONS.cisterna;
-            if (n.includes("combustible") || n.includes("lubricante")) return SVG_ICONS.combustible;
-            if (n.includes("camioneta")) return SVG_ICONS.camioneta;
-            if (n.includes("combi")) return SVG_ICONS.combi;
-            if (n.includes("generador")) return SVG_ICONS.generador;
-            if (n.includes("luminaria")) return SVG_ICONS.luminaria;
-            if (n.includes("camión") || n.includes("camion") || n.includes("fuera de ruta")) return SVG_ICONS.camion;
-            return SVG_ICONS.default;
+            if (n.includes("excavadora") || n.includes("cargadora")) {
+                return { type: "img", src: "img/excavadora.png", fallbackIcon: "fa-bucket" };
+            }
+            if (n.includes("rodillo")) {
+                return { type: "img", src: "img/rodillo.png", fallbackIcon: "fa-compact-disc" };
+            }
+            if (n.includes("motoniveladora") || n.includes("topadora")) {
+                return { type: "img", src: "img/motoniveladora.png", fallbackIcon: "fa-road" };
+            }
+            if (n.includes("luminaria")) {
+                return { type: "img", src: "img/luminaria.png", fallbackIcon: "fa-lightbulb" };
+            }
+            if (n.includes("camión") || n.includes("camion") || n.includes("fuera de ruta") || n.includes("regador")) {
+                return { type: "img", src: "img/camion.png", fallbackIcon: "fa-truck-field" };
+            }
+            // Iconos de respaldo para vehículos livianos / generadores
+            if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
+            if (n.includes("manipulador")) return { type: "fa", icon: "fa-boxes-packing" };
+            if (n.includes("camioneta")) return { type: "fa", icon: "fa-truck-pickup" };
+            if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
+            if (n.includes("generador")) return { type: "fa", icon: "fa-bolt" };
+            
+            return { type: "img", src: "img/camion.png", fallbackIcon: "fa-truck-monster" };
+        }
+
+        function renderIconHTML(iconObj, sizeClass = "w-5 h-5") {
+            if (iconObj.type === "img") {
+                return `<img src="${iconObj.src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain equip-img-icon" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
+            }
+            return `<i class="fa-solid ${iconObj.icon} text-xs"></i>`;
         }
 
         function getColorByEmpresa(empresa) {
@@ -464,7 +461,7 @@
                             sub: sub,
                             interno: eq.interno,
                             empresa: eq.empresa,
-                            svg: getIconSVGForEquipo(sub)
+                            iconData: getIconDataForEquipo(sub)
                         });
                     });
                 });
@@ -632,7 +629,7 @@
                 });
 
                 if (res.ok) {
-                    showToast("🌐 ¡Guardado para todos los dispositivos!");
+                    showToast("🌐 ¡Guardado para todos los celulares!");
                 } else {
                     showToast("❌ Error al guardar");
                 }
@@ -699,7 +696,7 @@
             stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
             renderSidebar();
             renderPlacedEquipments();
-            showToast("Equipo ubicado en el plano");
+            showToast("Equipo ubicado (Guarde en nube para aplicar)");
         });
 
         let selectedCategory = 'all';
@@ -767,8 +764,8 @@
 
                 item.innerHTML = `
                     <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 rounded-lg ${colorTheme.bg} border ${colorTheme.border} flex items-center justify-center text-white shrink-0 shadow">
-                            ${eq.svg}
+                        <div class="w-8 h-8 rounded-lg ${colorTheme.bg} border ${colorTheme.border} flex items-center justify-center text-white shrink-0 shadow p-1">
+                            ${renderIconHTML(eq.iconData, "w-6 h-6")}
                         </div>
                         <div class="overflow-hidden">
                             <div class="text-xs font-bold text-slate-200 truncate flex items-center gap-1.5">
@@ -812,7 +809,7 @@
                 elem.innerHTML = `
                     <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
                         <div class="relative ${colorTheme.bg} border ${colorTheme.border} p-1 rounded-lg shadow-md ${colorTheme.shadow} flex items-center justify-center text-white transition-transform duration-150 group-hover:scale-125">
-                            ${eq.svg}
+                            ${renderIconHTML(eq.iconData, "w-5 h-5")}
                             <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
                             </button>
                         </div>
@@ -826,8 +823,8 @@
                             <span class="text-[10px] font-extrabold text-white">${eq.interno}</span>
                             <span class="text-[8px] font-extrabold px-1 py-0.5 rounded text-white ${colorTheme.bg}">${eq.empresa}</span>
                         </div>
-                        <div class="text-[9px] text-slate-300 font-semibold mb-1 flex items-center gap-1">
-                            ${eq.svg} <span>${eq.sub}</span>
+                        <div class="text-[9px] text-slate-300 font-semibold mb-1">
+                            ${eq.sub}
                         </div>
                         <div class="text-[8px] flex items-center gap-1 font-bold ${isDetenido ? 'text-red-400' : 'text-emerald-400'}">
                             <span>Estado:</span>
