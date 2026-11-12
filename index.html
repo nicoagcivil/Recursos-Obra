@@ -42,11 +42,34 @@
             z-index: 50;
             opacity: 0.9;
         }
-        /* Convierte las siluetas negras sobre fondo blanco en blanco nítido sobre colores oscuros */
-        .equip-img-icon {
-            mix-blend-mode: multiply;
-            filter: invert(1) brightness(2);
+
+        /* Silueta limpia pintada del color de la empresa sin recuadro ni fondo */
+        .silhouette-badge {
+            background-color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            overflow: hidden;
         }
+        .silhouette-tint {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .silhouette-tint img {
+            filter: invert(1) contrast(200%);
+            mix-blend-mode: lighten;
+            display: block;
+        }
+
+        /* En barra lateral oscura: silueta blanca limpia */
+        .sidebar-img-icon {
+            mix-blend-mode: screen;
+            filter: invert(1) contrast(180%);
+        }
+
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -418,33 +441,53 @@
             if (n.includes("luminaria")) {
                 return { type: "img", src: "luminaria.jpg", fallbackIcon: "fa-lightbulb" };
             }
-            if (n.includes("camión") || n.includes("camion") || n.includes("fuera de ruta") || n.includes("regador")) {
+            if (n.includes("fuera de ruta")) {
+                return { type: "img", src: "camion fuera de ruta.jpg", fallbackIcon: "fa-truck-monster" };
+            }
+            if (n.includes("camioneta")) {
+                return { type: "img", src: "camioneta.jpg", fallbackIcon: "fa-truck-pickup" };
+            }
+            if (n.includes("camión") || n.includes("camion") || n.includes("regador")) {
                 return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-field" };
             }
-            // Iconos de respaldo para vehículos livianos / generadores
+            // Iconos de respaldo para el resto
             if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
             if (n.includes("manipulador")) return { type: "fa", icon: "fa-boxes-packing" };
-            if (n.includes("camioneta")) return { type: "fa", icon: "fa-truck-pickup" };
             if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
             if (n.includes("generador")) return { type: "fa", icon: "fa-bolt" };
             
             return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-monster" };
         }
 
-        function renderIconHTML(iconObj, sizeClass = "w-5 h-5") {
-            if (iconObj.type === "img") {
-                return `<img src="${iconObj.src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain equip-img-icon" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
-            }
-            return `<i class="fa-solid ${iconObj.icon} text-xs"></i>`;
-        }
-
         function getColorByEmpresa(empresa) {
             const emp = (empresa || '').toUpperCase().trim();
-            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-300", shadow: "shadow-blue-600/50" };
-            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-300", shadow: "shadow-red-600/50" };
-            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-300", shadow: "shadow-emerald-600/50" };
-            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-300", shadow: "shadow-purple-600/50" };
-            return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", shadow: "shadow-slate-700/50" };
+            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-400", iconColor: "text-blue-600", hex: "#2563eb" };
+            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-400", iconColor: "text-red-600", hex: "#dc2626" };
+            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-400", iconColor: "text-emerald-600", hex: "#059669" };
+            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-400", iconColor: "text-purple-600", hex: "#9333ea" };
+            return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", iconColor: "text-slate-800", hex: "#1e293b" };
+        }
+
+        // Renderizado para el mapa: silueta del color de la empresa SIN contorno negro ni recuadro
+        function renderMapSilhouetteHTML(iconObj, colorTheme, sizeClass = "w-8 h-8") {
+            if (iconObj.type === "img") {
+                return `
+                    <div class="silhouette-badge">
+                        <div class="silhouette-tint ${sizeClass}" style="background-color: ${colorTheme.hex};">
+                            <img src="${iconObj.src}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid ${iconObj.fallbackIcon} text-base\\' style=\\'color:${colorTheme.hex}\\'></i>'" class="w-full h-full object-contain" alt="Equipo">
+                        </div>
+                    </div>
+                `;
+            }
+            return `<i class="fa-solid ${iconObj.icon} text-lg" style="color: ${colorTheme.hex}; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.9));"></i>`;
+        }
+
+        // Renderizado para la barra lateral oscura: silueta blanca limpia
+        function renderSidebarIconHTML(iconObj, sizeClass = "w-6 h-6") {
+            if (iconObj.type === "img") {
+                return `<img src="${iconObj.src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain sidebar-img-icon" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
+            }
+            return `<i class="fa-solid ${iconObj.icon} text-xs"></i>`;
         }
 
         let flotaMaster = [];
@@ -765,7 +808,7 @@
                 item.innerHTML = `
                     <div class="flex items-center space-x-2">
                         <div class="w-8 h-8 rounded-lg ${colorTheme.bg} border ${colorTheme.border} flex items-center justify-center text-white shrink-0 shadow p-1">
-                            ${renderIconHTML(eq.iconData, "w-6 h-6")}
+                            ${renderSidebarIconHTML(eq.iconData, "w-6 h-6")}
                         </div>
                         <div class="overflow-hidden">
                             <div class="text-xs font-bold text-slate-200 truncate flex items-center gap-1.5">
@@ -808,12 +851,12 @@
 
                 elem.innerHTML = `
                     <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
-                        <div class="relative ${colorTheme.bg} border ${colorTheme.border} p-1 rounded-lg shadow-md ${colorTheme.shadow} flex items-center justify-center text-white transition-transform duration-150 group-hover:scale-125">
-                            ${renderIconHTML(eq.iconData, "w-5 h-5")}
+                        <div class="relative flex items-center justify-center transition-transform duration-150 group-hover:scale-125">
+                            ${renderMapSilhouetteHTML(eq.iconData, colorTheme, "w-8 h-8")}
                             <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
                             </button>
                         </div>
-                        <div class="mt-0.5 px-1 py-0 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
+                        <div class="mt-0.5 px-1.5 py-0.5 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
                             ${eq.interno}
                         </div>
                     </div>
