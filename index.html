@@ -42,32 +42,9 @@
             z-index: 50;
             opacity: 0.9;
         }
-
-        /* Silueta limpia pintada del color de la empresa sin recuadro ni fondo */
-        .silhouette-badge {
-            background-color: #ffffff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .silhouette-tint {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .silhouette-tint img {
-            filter: invert(1) contrast(200%);
-            mix-blend-mode: lighten;
-            display: block;
-        }
-
-        /* En barra lateral oscura: silueta blanca limpia */
-        .sidebar-img-icon {
-            mix-blend-mode: screen;
-            filter: invert(1) contrast(180%);
+        /* Halo blanco sutil alrededor de la silueta para que destaque sobre líneas negras del plano */
+        .clean-silhouette {
+            filter: drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.95)) drop-shadow(0px 1px 1px rgba(255, 255, 255, 0.9));
         }
 
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -450,7 +427,6 @@
             if (n.includes("camión") || n.includes("camion") || n.includes("regador")) {
                 return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-field" };
             }
-            // Iconos de respaldo para el resto
             if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
             if (n.includes("manipulador")) return { type: "fa", icon: "fa-boxes-packing" };
             if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
@@ -461,33 +437,93 @@
 
         function getColorByEmpresa(empresa) {
             const emp = (empresa || '').toUpperCase().trim();
-            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-400", iconColor: "text-blue-600", hex: "#2563eb" };
-            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-400", iconColor: "text-red-600", hex: "#dc2626" };
-            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-400", iconColor: "text-emerald-600", hex: "#059669" };
-            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-400", iconColor: "text-purple-600", hex: "#9333ea" };
-            return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", iconColor: "text-slate-800", hex: "#1e293b" };
+            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-400", hex: "#1d4ed8", rgb: [29, 78, 216] };
+            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-400", hex: "#dc2626", rgb: [220, 38, 38] };
+            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-400", hex: "#059669", rgb: [5, 150, 105] };
+            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-400", hex: "#7e22ce", rgb: [126, 34, 206] };
+            return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", hex: "#1e293b", rgb: [30, 41, 59] };
         }
 
-        // Renderizado para el mapa: silueta del color de la empresa SIN contorno negro ni recuadro
-        function renderMapSilhouetteHTML(iconObj, colorTheme, sizeClass = "w-8 h-8") {
+        // Caché de imágenes PNG transparentes coloreadas dinámicamente mediante Canvas
+        const tintedImageCache = {};
+
+        function getTransparentColoredIcon(src, rgb, callback) {
+            const cacheKey = `${src}_${rgb.join(',')}`;
+            if (tintedImageCache[cacheKey]) {
+                callback(tintedImageCache[cacheKey]);
+                return;
+            }
+
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    // Luminancia (0 = negro puro, 255 = blanco puro)
+                    const lum = (r * 0.299 + g * 0.587 + b * 0.114);
+
+                    if (lum > 215) {
+                        // Fondo blanco -> 100% transparente
+                        data[i + 3] = 0;
+                    } else {
+                        // Trazos oscuros -> color sólido de la empresa con bordes suavizados
+                        const alpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
+                        data[i] = rgb[0];
+                        data[i + 1] = rgb[1];
+                        data[i + 2] = rgb[2];
+                        data[i + 3] = alpha;
+                    }
+                }
+
+                ctx.putImageData(imgData, 0, 0);
+                const dataUrl = canvas.toDataURL('image/png');
+                tintedImageCache[cacheKey] = dataUrl;
+                callback(dataUrl);
+            };
+            img.src = src;
+        }
+
+        // Aplica el PNG transparente coloreado a todas las imágenes del mapa y barra lateral
+        function hidratarIconosTransparentes() {
+            document.querySelectorAll('img[data-tint-src]').forEach(imgEl => {
+                const src = imgEl.getAttribute('data-tint-src');
+                const rgb = imgEl.getAttribute('data-tint-rgb').split(',').map(Number);
+                getTransparentColoredIcon(src, rgb, (transparentPngUrl) => {
+                    imgEl.src = transparentPngUrl;
+                    imgEl.classList.remove('opacity-0');
+                });
+            });
+        }
+
+        // Renderizado para el mapa: SOLO silueta del color de la empresa, SIN fondo ni recuadro
+        function renderMapSilhouetteHTML(iconObj, colorTheme, sizeClass = "w-9 h-9") {
             if (iconObj.type === "img") {
                 return `
-                    <div class="silhouette-badge">
-                        <div class="silhouette-tint ${sizeClass}" style="background-color: ${colorTheme.hex};">
-                            <img src="${iconObj.src}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid ${iconObj.fallbackIcon} text-base\\' style=\\'color:${colorTheme.hex}\\'></i>'" class="w-full h-full object-contain" alt="Equipo">
-                        </div>
+                    <div class="${sizeClass} flex items-center justify-center clean-silhouette">
+                        <img data-tint-src="${iconObj.src}" data-tint-rgb="${colorTheme.rgb.join(',')}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid ${iconObj.fallbackIcon} text-lg\\' style=\\'color:${colorTheme.hex}\\'></i>'" class="w-full h-full object-contain opacity-0 transition-opacity duration-150" alt="Equipo">
                     </div>
                 `;
             }
-            return `<i class="fa-solid ${iconObj.icon} text-lg" style="color: ${colorTheme.hex}; filter: drop-shadow(0 1px 1px rgba(255,255,255,0.9));"></i>`;
+            return `<i class="fa-solid ${iconObj.icon} text-lg clean-silhouette" style="color: ${colorTheme.hex};"></i>`;
         }
 
         // Renderizado para la barra lateral oscura: silueta blanca limpia
         function renderSidebarIconHTML(iconObj, sizeClass = "w-6 h-6") {
             if (iconObj.type === "img") {
-                return `<img src="${iconObj.src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain sidebar-img-icon" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
+                return `<img data-tint-src="${iconObj.src}" data-tint-rgb="255,255,255" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain opacity-0 transition-opacity duration-150" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
             }
-            return `<i class="fa-solid ${iconObj.icon} text-xs"></i>`;
+            return `<i class="fa-solid ${iconObj.icon} text-xs text-white"></i>`;
         }
 
         let flotaMaster = [];
@@ -829,6 +865,7 @@
             });
 
             flotaCount.textContent = `${unplacedCount} dispon.`;
+            hidratarIconosTransparentes();
         }
 
         function renderPlacedEquipments() {
@@ -852,11 +889,11 @@
                 elem.innerHTML = `
                     <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
                         <div class="relative flex items-center justify-center transition-transform duration-150 group-hover:scale-125">
-                            ${renderMapSilhouetteHTML(eq.iconData, colorTheme, "w-8 h-8")}
-                            <button class="btn-change-status absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
+                            ${renderMapSilhouetteHTML(eq.iconData, colorTheme, "w-9 h-9")}
+                            <button class="btn-change-status absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
                             </button>
                         </div>
-                        <div class="mt-0.5 px-1.5 py-0.5 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
+                        <div class="-mt-0.5 px-1.5 py-0.5 bg-slate-950/90 text-white font-extrabold text-[8px] rounded border border-slate-700 shadow-sm whitespace-nowrap">
                             ${eq.interno}
                         </div>
                     </div>
@@ -930,6 +967,8 @@
 
                 dropLayer.appendChild(elem);
             });
+
+            hidratarIconosTransparentes();
         }
 
         function showToast(msg) {
