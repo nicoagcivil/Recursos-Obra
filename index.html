@@ -6,7 +6,7 @@
     <title>Ubicación de Equipos en Obra - Poza H4</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons (para interfaz y respaldo) -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2canvas para captura del plano -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -42,11 +42,11 @@
             z-index: 50;
             opacity: 0.9;
         }
-        /* Halo blanco sutil alrededor de la silueta para que destaque sobre líneas negras del plano */
+        /* Halo blanco sutil alrededor de la silueta para legibilidad sobre líneas negras del plano */
         .clean-silhouette {
             filter: drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.95)) drop-shadow(0px 1px 1px rgba(255, 255, 255, 0.9));
         }
-
+        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -76,7 +76,7 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en Nube
                 </button>
                 <button id="btn-download-image" type="button" onclick="descargarCapturaPlano()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-camera"></i> Compartir Imagen (Wsp)
+                    <i class="fa-solid fa-camera"></i> Compartir Imagen (WhatsApp)
                 </button>
                 <button id="btn-reset-map" type="button" class="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-left"></i> Restablecer Flota
@@ -100,7 +100,7 @@
                 <span id="flota-count" class="bg-slate-900 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">0 dispon.</span>
             </div>
 
-            <!-- Buscador Rápido -->
+            <!-- Buscador Rápido de Equipos por Interno/Nombre -->
             <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-2">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
@@ -126,7 +126,9 @@
             </div>
 
             <!-- Lista de Equipos Arrastrables -->
-            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto"></div>
+            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto">
+                <!-- Se puebla dinámicamente -->
+            </div>
             
             <div class="p-2.5 bg-slate-900/40 border-t border-slate-700/60 text-[10px] text-slate-400 text-center">
                 💡 Arrastra el icono al plano. Doble clic en el icono del plano para retirarlo.
@@ -136,7 +138,7 @@
         <!-- Main Map Area (Derecha) -->
         <main class="flex-grow bg-slate-950 border border-slate-700 rounded-2xl relative overflow-hidden flex flex-col shadow-2xl">
             
-            <!-- Controles de Zoom -->
+            <!-- Controles de Zoom y Movimiento -->
             <div class="absolute top-4 right-4 z-30 flex flex-col bg-slate-900/90 border border-slate-700 rounded-xl p-1 shadow-2xl backdrop-blur-md gap-1">
                 <button id="btn-zoom-in" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center text-xs font-bold transition-all shadow" title="Acercar (Zoom +)">
                     <i class="fa-solid fa-magnifying-glass-plus"></i>
@@ -220,6 +222,7 @@
                         <option value="Camión Volcador">Camión Volcador</option>
                         <option value="Camión Combustible">Camión Combustible</option>
                         <option value="Camión Lubricante">Camión Lubricante</option>
+                        <option value="Camión Taller">Camión Taller</option>
                         <option value="Camión Regador">Camión Regador</option>
                         <option value="Camión Regador Semi">Camión Regador Semi</option>
                         <option value="Cargadora">Cargadora</option>
@@ -278,6 +281,7 @@
         const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
 
+        // ESTRUCTURA EXACTA SEGÚN PLANILLA DE CARGA Y ESPECIFICACIÓN DE MARCAS
         const equiposEstructura = {
             "Camiones": {
                 "Fuera de Ruta Zoomlion": [
@@ -403,10 +407,13 @@
             }
         };
 
-        // RUTAS DIRECTAS A LOS ARCHIVOS .JPG EN LA RAÍZ DEL REPOSITORIO
+        // REDIRECCIÓN SEGÚN EL TIPO DE EQUIPO A LOS 15 ICONOS .JPG DEL REPOSITORIO
         function getIconDataForEquipo(sub) {
             const n = sub.toLowerCase();
-            if (n.includes("excavadora") || n.includes("cargadora")) {
+            if (n.includes("cargadora")) {
+                return { type: "img", src: "cargadora.jpg", fallbackIcon: "fa-dumpster" };
+            }
+            if (n.includes("excavadora")) {
                 return { type: "img", src: "excavadora.jpg", fallbackIcon: "fa-bucket" };
             }
             if (n.includes("rodillo")) {
@@ -418,33 +425,49 @@
             if (n.includes("luminaria")) {
                 return { type: "img", src: "luminaria.jpg", fallbackIcon: "fa-lightbulb" };
             }
+            if (n.includes("generador")) {
+                return { type: "img", src: "generador.jpg", fallbackIcon: "fa-bolt" };
+            }
             if (n.includes("fuera de ruta")) {
                 return { type: "img", src: "camion fuera de ruta.jpg", fallbackIcon: "fa-truck-monster" };
+            }
+            if (n.includes("regador semi")) {
+                return { type: "img", src: "regador semi.jpg", fallbackIcon: "fa-faucet-drip" };
+            }
+            if (n.includes("regador")) {
+                return { type: "img", src: "regador.jpg", fallbackIcon: "fa-faucet-drip" };
+            }
+            if (n.includes("combustible")) {
+                return { type: "img", src: "combustible.jpg", fallbackIcon: "fa-gas-pump" };
+            }
+            if (n.includes("lubricante") || n.includes("taller")) {
+                return { type: "img", src: "taller mecanico.jpg", fallbackIcon: "fa-wrench" };
+            }
+            if (n.includes("manipulador")) {
+                return { type: "img", src: "manipulador.jpg", fallbackIcon: "fa-boxes-packing" };
             }
             if (n.includes("camioneta")) {
                 return { type: "img", src: "camioneta.jpg", fallbackIcon: "fa-truck-pickup" };
             }
-            if (n.includes("camión") || n.includes("camion") || n.includes("regador")) {
+            if (n.includes("combi")) {
+                return { type: "img", src: "combi.jpg", fallbackIcon: "fa-bus" };
+            }
+            if (n.includes("camión") || n.includes("camion")) {
                 return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-field" };
             }
-            if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
-            if (n.includes("manipulador")) return { type: "fa", icon: "fa-boxes-packing" };
-            if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
-            if (n.includes("generador")) return { type: "fa", icon: "fa-bolt" };
-            
             return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-monster" };
         }
 
         function getColorByEmpresa(empresa) {
             const emp = (empresa || '').toUpperCase().trim();
-            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-400", hex: "#1d4ed8", rgb: [29, 78, 216] };
-            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-400", hex: "#dc2626", rgb: [220, 38, 38] };
-            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-400", hex: "#059669", rgb: [5, 150, 105] };
-            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-400", hex: "#7e22ce", rgb: [126, 34, 206] };
+            if (emp.includes("AB")) return { bg: "bg-blue-600", border: "border-blue-400", text: "text-blue-300", hex: "#1d4ed8", rgb: [29, 78, 216] };
+            if (emp.includes("BSD")) return { bg: "bg-red-600", border: "border-red-400", text: "text-red-300", hex: "#dc2626", rgb: [220, 38, 38] };
+            if (emp.includes("SMG")) return { bg: "bg-emerald-600", border: "border-emerald-400", text: "text-emerald-300", hex: "#059669", rgb: [5, 150, 105] };
+            if (emp.includes("IIRR")) return { bg: "bg-purple-600", border: "border-purple-400", text: "text-purple-300", hex: "#7e22ce", rgb: [126, 34, 206] };
             return { bg: "bg-slate-700", border: "border-slate-500", text: "text-slate-300", hex: "#1e293b", rgb: [30, 41, 59] };
         }
 
-        // Caché de imágenes PNG transparentes coloreadas dinámicamente mediante Canvas
+        // Procesador Canvas: elimina el fondo blanco y colorea las líneas negras según la empresa
         const tintedImageCache = {};
 
         function getTransparentColoredIcon(src, rgb, callback) {
@@ -470,14 +493,11 @@
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
-                    // Luminancia (0 = negro puro, 255 = blanco puro)
                     const lum = (r * 0.299 + g * 0.587 + b * 0.114);
 
                     if (lum > 215) {
-                        // Fondo blanco -> 100% transparente
-                        data[i + 3] = 0;
+                        data[i + 3] = 0; // Fondo blanco -> 100% transparente
                     } else {
-                        // Trazos oscuros -> color sólido de la empresa con bordes suavizados
                         const alpha = Math.min(255, Math.round(((215 - lum) / 140) * 255));
                         data[i] = rgb[0];
                         data[i + 1] = rgb[1];
@@ -494,7 +514,6 @@
             img.src = src;
         }
 
-        // Aplica el PNG transparente coloreado a todas las imágenes del mapa y barra lateral
         function hidratarIconosTransparentes() {
             document.querySelectorAll('img[data-tint-src]').forEach(imgEl => {
                 const src = imgEl.getAttribute('data-tint-src');
@@ -506,24 +525,18 @@
             });
         }
 
-        // Renderizado para el mapa: SOLO silueta del color de la empresa, SIN fondo ni recuadro
+        // Renderizado para el mapa: silueta limpia coloreada por empresa, sin fondo ni recuadro
         function renderMapSilhouetteHTML(iconObj, colorTheme, sizeClass = "w-9 h-9") {
-            if (iconObj.type === "img") {
-                return `
-                    <div class="${sizeClass} flex items-center justify-center clean-silhouette">
-                        <img data-tint-src="${iconObj.src}" data-tint-rgb="${colorTheme.rgb.join(',')}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid ${iconObj.fallbackIcon} text-lg\\' style=\\'color:${colorTheme.hex}\\'></i>'" class="w-full h-full object-contain opacity-0 transition-opacity duration-150" alt="Equipo">
-                    </div>
-                `;
-            }
-            return `<i class="fa-solid ${iconObj.icon} text-lg clean-silhouette" style="color: ${colorTheme.hex};"></i>`;
+            return `
+                <div class="${sizeClass} flex items-center justify-center clean-silhouette">
+                    <img data-tint-src="${iconObj.src}" data-tint-rgb="${colorTheme.rgb.join(',')}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid ${iconObj.fallbackIcon} text-lg\\' style=\\'color:${colorTheme.hex}\\'></i>'" class="w-full h-full object-contain opacity-0 transition-opacity duration-150" alt="Equipo">
+                </div>
+            `;
         }
 
         // Renderizado para la barra lateral oscura: silueta blanca limpia
         function renderSidebarIconHTML(iconObj, sizeClass = "w-6 h-6") {
-            if (iconObj.type === "img") {
-                return `<img data-tint-src="${iconObj.src}" data-tint-rgb="255,255,255" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain opacity-0 transition-opacity duration-150" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
-            }
-            return `<i class="fa-solid ${iconObj.icon} text-xs text-white"></i>`;
+            return `<img data-tint-src="${iconObj.src}" data-tint-rgb="255,255,255" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" class="${sizeClass} object-contain opacity-0 transition-opacity duration-150" alt="Equipo"><i class="fa-solid ${iconObj.fallbackIcon} text-xs hidden"></i>`;
         }
 
         let flotaMaster = [];
