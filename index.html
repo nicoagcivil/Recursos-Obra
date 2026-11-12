@@ -6,7 +6,7 @@
     <title>Ubicación de Equipos en Obra - Poza H4</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons (para interfaz) -->
+    <!-- FontAwesome Icons (para interfaz y respaldo) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2canvas para captura del plano -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -403,23 +403,23 @@
             }
         };
 
-        // ASOCIACIÓN DIRECTA A LAS IMÁGENES GENERADAS EN LA CARPETA img/
+        // RUTAS DIRECTAS A LOS ARCHIVOS .JPG EN LA RAÍZ DEL REPOSITORIO
         function getIconDataForEquipo(sub) {
             const n = sub.toLowerCase();
             if (n.includes("excavadora") || n.includes("cargadora")) {
-                return { type: "img", src: "img/excavadora.png", fallbackIcon: "fa-bucket" };
+                return { type: "img", src: "excavadora.jpg", fallbackIcon: "fa-bucket" };
             }
             if (n.includes("rodillo")) {
-                return { type: "img", src: "img/rodillo.png", fallbackIcon: "fa-compact-disc" };
+                return { type: "img", src: "rodillo.jpg", fallbackIcon: "fa-compact-disc" };
             }
             if (n.includes("motoniveladora") || n.includes("topadora")) {
-                return { type: "img", src: "img/motoniveladora.png", fallbackIcon: "fa-road" };
+                return { type: "img", src: "motoniveladora.jpg", fallbackIcon: "fa-road" };
             }
             if (n.includes("luminaria")) {
-                return { type: "img", src: "img/luminaria.png", fallbackIcon: "fa-lightbulb" };
+                return { type: "img", src: "luminaria.jpg", fallbackIcon: "fa-lightbulb" };
             }
             if (n.includes("camión") || n.includes("camion") || n.includes("fuera de ruta") || n.includes("regador")) {
-                return { type: "img", src: "img/camion.png", fallbackIcon: "fa-truck-field" };
+                return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-field" };
             }
             // Iconos de respaldo para vehículos livianos / generadores
             if (n.includes("combustible") || n.includes("lubricante")) return { type: "fa", icon: "fa-gas-pump" };
@@ -428,7 +428,7 @@
             if (n.includes("combi")) return { type: "fa", icon: "fa-bus" };
             if (n.includes("generador")) return { type: "fa", icon: "fa-bolt" };
             
-            return { type: "img", src: "img/camion.png", fallbackIcon: "fa-truck-monster" };
+            return { type: "img", src: "camion.jpg", fallbackIcon: "fa-truck-monster" };
         }
 
         function renderIconHTML(iconObj, sizeClass = "w-5 h-5") {
