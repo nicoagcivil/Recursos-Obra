@@ -71,7 +71,7 @@
                 </div>
                 <div>
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                        Mapa Interactivo de Flota <span class="text-[10px] bg-slate-700 text-emerald-400 px-1.5 py-0.5 rounded">v2.6</span>
+                        Mapa Interactivo de Flota <span class="text-[10px] bg-slate-700 text-emerald-400 px-1.5 py-0.5 rounded">v2.7</span>
                     </h1>
                     <p id="sync-status-label" class="text-xs text-slate-400">Sincronización en la Nube Activa (JSONBin.io)</p>
                 </div>
@@ -111,7 +111,10 @@
             <div class="p-2 bg-slate-900 border-b border-slate-700 space-y-2">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-                    <input type="text" id="input-search-equip" placeholder="Buscar por interno..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
+                    <input type="text" id="input-search-equip" placeholder="Buscar por interno..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#b41f25]">
+                    <button type="button" id="btn-clear-search" onclick="limpiarFiltroBusqueda()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-white text-xs" title="Limpiar búsqueda">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
 
                 <!-- Desplegables de Selección Jerárquica -->
@@ -246,13 +249,13 @@
                     </select>
                 </div>
                 <p class="text-[10px] text-emerald-400">
-                    ✅ Se guardará en la nube (JSONBin) y quedará visible en todos los dispositivos.
+                    ✅ Se añadirá a la lista de Flota Obra y se guardará en la nube para que puedas arrastrarlo al plano.
                 </p>
             </div>
 
             <div class="flex gap-2 justify-end pt-2">
                 <button onclick="cerrarModalAgregarEquipo()" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold">Cancelar</button>
-                <button id="btn-confirm-add-equip" onclick="registrarYUbicarEquipoNuevo()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow disabled:opacity-50">Registrar y Añadir</button>
+                <button id="btn-confirm-add-equip" onclick="registrarEquipoEnLista()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow disabled:opacity-50">Agregar a la Lista</button>
             </div>
         </div>
     </div>
@@ -418,6 +421,7 @@
         };
 
         let equiposCustomList = [];
+        let ultimoIdAgregado = null;
 
         function normalizarInterno(texto) {
             return (texto || '').toString().trim().replace(/\s+/g, ' ').toUpperCase();
@@ -536,30 +540,11 @@
 
             const internosRegistrados = new Set();
 
-            let idCounter = 1;
-            Object.keys(equiposEstructura).forEach(cat => {
-                Object.keys(equiposEstructura[cat]).forEach(sub => {
-                    equiposEstructura[cat][sub].forEach(eq => {
-                        internosRegistrados.add(normalizarInterno(eq.interno));
-                        flotaMaster.push({
-                            id: `eq_${idCounter++}`,
-                            cat: cat,
-                            sub: sub,
-                            interno: eq.interno,
-                            empresa: eq.empresa,
-                            isCustom: false,
-                            iconData: getIconDataForEquipo(sub)
-                        });
-                    });
-                });
-            });
-
-            // Filtrar duplicados en equiposCustomList conservando solo el primero
+            // Primero agregamos los equipos personalizados al principio de la lista para mayor visibilidad
             const customFiltrados = [];
             equiposCustomList.forEach(customEq => {
                 const norm = normalizarInterno(customEq.interno);
                 if (internosRegistrados.has(norm)) {
-                    // Limpiar posición huérfana si existía un duplicado previo
                     delete stateEquipments[customEq.id];
                     return;
                 }
@@ -572,7 +557,7 @@
                 if (!equiposEstructura[customEq.cat][customEq.sub]) {
                     equiposEstructura[customEq.cat][customEq.sub] = [];
                 }
-                equiposEstructura[customEq.cat][customEq.sub].push({
+                equiposEstructura[customEq.cat][customEq.sub].unshift({
                     interno: customEq.interno,
                     empresa: customEq.empresa
                 });
@@ -588,6 +573,25 @@
                 });
             });
             equiposCustomList = customFiltrados;
+
+            // Luego agregamos la flota base
+            let idCounter = 1;
+            Object.keys(equiposBase).forEach(cat => {
+                Object.keys(equiposBase[cat]).forEach(sub => {
+                    equiposBase[cat][sub].forEach(eq => {
+                        internosRegistrados.add(normalizarInterno(eq.interno));
+                        flotaMaster.push({
+                            id: `eq_${idCounter++}`,
+                            cat: cat,
+                            sub: sub,
+                            interno: eq.interno,
+                            empresa: eq.empresa,
+                            isCustom: false,
+                            iconData: getIconDataForEquipo(sub)
+                        });
+                    });
+                });
+            });
         }
 
         let stateEquipments = {};
@@ -710,7 +714,6 @@
             mapViewport.classList.replace('cursor-grab', 'cursor-grabbing');
         });
 
-        // Validación en tiempo real mientras se escribe el interno
         const inputNuevoInterno = document.getElementById('nuevo-interno');
         const msgDuplicado = document.getElementById('error-duplicado-msg');
         const btnConfirmAdd = document.getElementById('btn-confirm-add-equip');
@@ -735,6 +738,7 @@
             btnConfirmAdd.disabled = false;
             document.getElementById('modal-add-equip').classList.remove('hidden');
             document.getElementById('modal-add-equip').classList.add('flex');
+            setTimeout(() => inputNuevoInterno.focus(), 100);
         }
 
         function cerrarModalAgregarEquipo() {
@@ -744,7 +748,7 @@
 
         let isSavingNewEquip = false;
 
-        async function registrarYUbicarEquipoNuevo() {
+        async function registrarEquipoEnLista() {
             if (isSavingNewEquip) return;
 
             const internoRaw = document.getElementById('nuevo-interno').value.trim().replace(/\s+/g, ' ');
@@ -781,7 +785,7 @@
 
                 const customId = `custom_${Date.now()}`;
 
-                equiposCustomList.push({
+                equiposCustomList.unshift({
                     id: customId,
                     cat: categoriaPrincipal,
                     sub: tipoInput,
@@ -789,17 +793,28 @@
                     empresa: empresaInput
                 });
 
-                reconstruirFlotaMaster();
-                stateEquipments[customId] = { x: 50, y: 50, estado: 'operativo' };
+                ultimoIdAgregado = customId;
 
+                // Reiniciar filtros de la lista lateral para que el equipo recién creado sea visible inmediatamente arriba
+                selectedCategory = 'all';
+                selectedSubcategory = 'all';
+                searchQuery = '';
+                filterCatSelect.value = 'all';
+                filterSubSelect.innerHTML = '<option value="all">Todos los Tipos</option>';
+                filterSubSelect.disabled = true;
+                inputSearch.value = '';
+                document.getElementById('btn-clear-search').classList.add('hidden');
+
+                reconstruirFlotaMaster();
                 cerrarModalAgregarEquipo();
                 document.getElementById('nuevo-interno').value = '';
+                
                 renderSidebar();
-                renderPlacedEquipments();
+                sidebarList.scrollTop = 0;
 
                 const guardadoOk = await guardarPosicionesManual();
                 if (guardadoOk) {
-                    showToast(`✅ ${internoRaw} guardado en la nube`);
+                    showToast(`✅ ${internoRaw} agregado a la lista (arrástralo al plano)`);
                 }
             } finally {
                 isSavingNewEquip = false;
@@ -814,6 +829,7 @@
 
             equiposCustomList = equiposCustomList.filter(e => e.id !== customId);
             delete stateEquipments[customId];
+            if (ultimoIdAgregado === customId) ultimoIdAgregado = null;
             reconstruirFlotaMaster();
             renderSidebar();
             renderPlacedEquipments();
@@ -951,6 +967,7 @@
             y = Math.max(1, Math.min(99, y));
 
             stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
+            if (ultimoIdAgregado === id) ultimoIdAgregado = null;
             renderSidebar();
             renderPlacedEquipments();
             showToast("Equipo ubicado (Guarde en nube para aplicar)");
@@ -963,6 +980,14 @@
         const filterCatSelect = document.getElementById('filter-categoria-select');
         const filterSubSelect = document.getElementById('filter-subcategoria-select');
         const inputSearch = document.getElementById('input-search-equip');
+        const btnClearSearch = document.getElementById('btn-clear-search');
+
+        function limpiarFiltroBusqueda() {
+            inputSearch.value = '';
+            searchQuery = '';
+            btnClearSearch.classList.add('hidden');
+            renderSidebar();
+        }
 
         filterCatSelect.addEventListener('change', function() {
             selectedCategory = this.value;
@@ -991,6 +1016,11 @@
         if (inputSearch) {
             inputSearch.addEventListener('input', (e) => {
                 searchQuery = e.target.value.toLowerCase().trim();
+                if (searchQuery) {
+                    btnClearSearch.classList.remove('hidden');
+                } else {
+                    btnClearSearch.classList.add('hidden');
+                }
                 renderSidebar();
             });
         }
@@ -1014,10 +1044,16 @@
 
                 unplacedCount++;
                 const colorTheme = getColorByEmpresa(eq.empresa);
+                const isRecienCreado = eq.id === ultimoIdAgregado;
+
                 const item = document.createElement('div');
-                item.className = 'draggable-item bg-slate-900/90 hover:bg-slate-700/80 border border-slate-700 p-2 rounded-xl flex items-center justify-between transition-all shadow-sm';
+                item.className = `draggable-item ${isRecienCreado ? 'bg-blue-950/70 border-blue-400 ring-1 ring-blue-400' : 'bg-slate-900/90 border-slate-700'} hover:bg-slate-700/80 border p-2 rounded-xl flex items-center justify-between transition-all shadow-sm`;
                 item.draggable = true;
                 item.dataset.id = eq.id;
+
+                const badgeNuevo = isRecienCreado 
+                    ? `<span class="text-[8px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded uppercase">Nuevo</span>` 
+                    : '';
 
                 const deleteCustomBtn = eq.isCustom 
                     ? `<button type="button" onclick="event.stopPropagation(); eliminarEquipoCustom('${eq.id}')" class="text-red-400 hover:text-red-300 text-xs px-1.5" title="Eliminar equipo agregado"><i class="fa-solid fa-trash-can"></i></button>`
@@ -1032,6 +1068,7 @@
                             <div class="text-xs font-bold text-slate-200 truncate flex items-center gap-1.5">
                                 <span>${eq.interno}</span>
                                 <span class="text-[9px] ${colorTheme.text} font-bold px-1 rounded bg-slate-950/60 border ${colorTheme.border}">${eq.empresa}</span>
+                                ${badgeNuevo}
                             </div>
                             <div class="text-[10px] text-slate-400 truncate">${eq.sub}</div>
                         </div>
