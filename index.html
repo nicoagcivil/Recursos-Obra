@@ -71,7 +71,7 @@
                 </div>
                 <div>
                     <h1 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                        Mapa Interactivo de Flota <span class="text-[10px] bg-slate-700 text-emerald-400 px-1.5 py-0.5 rounded">v2.7</span>
+                        Mapa Interactivo de Flota <span class="text-[10px] bg-slate-700 text-emerald-400 px-1.5 py-0.5 rounded">v2.8</span>
                     </h1>
                     <p id="sync-status-label" class="text-xs text-slate-400">Sincronización en la Nube Activa (JSONBin.io)</p>
                 </div>
@@ -164,9 +164,12 @@
 
             <!-- Visor del Plano -->
             <div id="map-viewport" class="canvas-container flex-grow relative overflow-hidden flex items-center justify-center p-0 cursor-grab">
-                <div id="map-zoom-container" class="relative w-full h-full transform-gpu origin-top-left transition-transform duration-75">
-                    <img id="plano-fondo-img" src="plano_obra.jpg" onerror="this.onerror=null; this.src='https://placehold.co/1200x800/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0">
-                    <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
+                <div id="map-zoom-container" class="relative w-full h-full transform-gpu origin-top-left transition-transform duration-75 flex items-center justify-center">
+                    <!-- Wrapper ajustado exactamente a la relación de aspecto de la imagen -->
+                    <div id="map-exact-plane" class="relative overflow-hidden shadow-2xl">
+                        <img id="plano-fondo-img" src="plano_obra.jpg" onload="ajustarCajaExactaPlano()" onerror="this.onerror=null; this.src='https://placehold.co/1200x800/0f172a/ffffff?text=Cargue+imagen+plano_obra.jpg';" alt="Plano Obra Poza H4" class="w-full h-full block pointer-events-none select-none z-0">
+                        <div id="equipment-drop-layer" class="absolute inset-0 z-20 pointer-events-auto"></div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -540,7 +543,6 @@
 
             const internosRegistrados = new Set();
 
-            // Primero agregamos los equipos personalizados al principio de la lista para mayor visibilidad
             const customFiltrados = [];
             equiposCustomList.forEach(customEq => {
                 const norm = normalizarInterno(customEq.interno);
@@ -574,7 +576,6 @@
             });
             equiposCustomList = customFiltrados;
 
-            // Luego agregamos la flota base
             let idCounter = 1;
             Object.keys(equiposBase).forEach(cat => {
                 Object.keys(equiposBase[cat]).forEach(sub => {
@@ -600,6 +601,8 @@
         const dropLayer = document.getElementById('equipment-drop-layer');
         const mapViewport = document.getElementById('map-viewport');
         const zoomContainer = document.getElementById('map-zoom-container');
+        const exactPlane = document.getElementById('map-exact-plane');
+        const planoImg = document.getElementById('plano-fondo-img');
         const flotaCount = document.getElementById('flota-count');
 
         let currentZoom = 1;
@@ -612,14 +615,57 @@
         let activeDragId = null;
         let activeDragElem = null;
 
+        // Calcula la caja exacta de la imagen según su relación de aspecto natural
+        // para que las coordenadas (x%, y%) sean idénticas en cualquier celular o monitor
+        function ajustarCajaExactaPlano() {
+            const vpW = mapViewport.clientWidth;
+            const vpH = mapViewport.clientHeight;
+            if (!vpW || !vpH) return;
+
+            const natW = planoImg.naturalWidth || 1200;
+            const natH = planoImg.naturalHeight || 800;
+            const imgRatio = natW / natH;
+            const vpRatio = vpW / vpH;
+
+            let finalW, finalH;
+            if (vpRatio > imgRatio) {
+                finalH = vpH;
+                finalW = vpH * imgRatio;
+            } else {
+                finalW = vpW;
+                finalH = vpW / imgRatio;
+            }
+
+            exactPlane.style.width = `${Math.floor(finalW)}px`;
+            exactPlane.style.height = `${Math.floor(finalH)}px`;
+
+            actualizarEscalaIconos();
+        }
+
+        function actualizarEscalaIconos() {
+            // Escala proporcional al ancho del plano (base 950px) y al zoom actual
+            const planeW = exactPlane.clientWidth || 950;
+            const responsiveRatio = Math.max(0.55, Math.min(1.25, planeW / 950));
+            const zoomCompensation = Math.max(0.45, 1 / Math.sqrt(currentZoom));
+            const finalScale = responsiveRatio * zoomCompensation;
+
+            document.querySelectorAll('.placed-equipment-icon').forEach(icon => {
+                icon.style.transform = `scale(${finalScale})`;
+            });
+        }
+
+        window.addEventListener('resize', ajustarCajaExactaPlano);
+        window.addEventListener('orientationchange', () => setTimeout(ajustarCajaExactaPlano, 150));
+
         function moverEquipoEnPlano(clientX, clientY) {
             if (!activeDragId || !activeDragElem) return;
-            const rect = zoomContainer.getBoundingClientRect();
+            // Se calcula siempre respecto al rectángulo exacto de la imagen del plano
+            const rect = exactPlane.getBoundingClientRect();
             let x = ((clientX - rect.left) / rect.width) * 100;
             let y = ((clientY - rect.top) / rect.height) * 100;
 
-            x = Math.max(1, Math.min(99, x));
-            y = Math.max(1, Math.min(99, y));
+            x = Math.max(0.5, Math.min(99.5, x));
+            y = Math.max(0.5, Math.min(99.5, y));
 
             activeDragElem.style.left = `${x}%`;
             activeDragElem.style.top = `${y}%`;
@@ -675,11 +721,7 @@
         function updateZoomTransform() {
             zoomContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
             document.getElementById('zoom-level-indicator').textContent = `${Math.round(currentZoom * 100)}%`;
-            
-            const scaleFactor = Math.max(0.4, 1 / Math.sqrt(currentZoom));
-            document.querySelectorAll('.placed-equipment-icon').forEach(icon => {
-                icon.style.transform = `scale(${scaleFactor})`;
-            });
+            actualizarEscalaIconos();
         }
 
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
@@ -795,7 +837,6 @@
 
                 ultimoIdAgregado = customId;
 
-                // Reiniciar filtros de la lista lateral para que el equipo recién creado sea visible inmediatamente arriba
                 selectedCategory = 'all';
                 selectedSubcategory = 'all';
                 searchQuery = '';
@@ -915,7 +956,8 @@
         async function descargarCapturaPlano() {
             showToast("📸 Generando imagen del plano...");
             try {
-                const canvas = await html2canvas(zoomContainer, {
+                // Captura exactamente la caja del plano sin bordes negros sobrantes
+                const canvas = await html2canvas(exactPlane, {
                     useCORS: true,
                     allowTaint: true,
                     scale: 2
@@ -959,12 +1001,12 @@
             const id = e.dataTransfer.getData('text/plain');
             if (!id) return;
 
-            const rect = zoomContainer.getBoundingClientRect();
+            const rect = exactPlane.getBoundingClientRect();
             let x = ((e.clientX - rect.left) / rect.width) * 100;
             let y = ((e.clientY - rect.top) / rect.height) * 100;
 
-            x = Math.max(1, Math.min(99, x));
-            y = Math.max(1, Math.min(99, y));
+            x = Math.max(0.5, Math.min(99.5, x));
+            y = Math.max(0.5, Math.min(99.5, y));
 
             stateEquipments[id] = { x: x, y: y, estado: 'operativo' };
             if (ultimoIdAgregado === id) ultimoIdAgregado = null;
@@ -1092,7 +1134,6 @@
 
         function renderPlacedEquipments() {
             dropLayer.innerHTML = '';
-            const scaleFactor = Math.max(0.4, 1 / Math.sqrt(currentZoom));
 
             Object.keys(stateEquipments).forEach(id => {
                 const data = stateEquipments[id];
@@ -1116,7 +1157,7 @@
                     : '';
 
                 elem.innerHTML = `
-                    <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75" style="transform: scale(${scaleFactor})">
+                    <div class="placed-equipment-icon flex flex-col items-center origin-center transition-transform duration-75">
                         <div class="relative flex items-center justify-center transition-transform duration-150 group-hover:scale-125">
                             ${renderMapSilhouetteHTML(eq.iconData, colorTheme, "w-9 h-9")}
                             <button type="button" class="btn-change-status absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[5px] ${isDetenido ? 'bg-red-500 border border-white' : 'bg-emerald-500 border border-white'} shadow" title="Alternar estado">
@@ -1179,6 +1220,7 @@
                 dropLayer.appendChild(elem);
             });
 
+            actualizarEscalaIconos();
             hidratarIconosTransparentes();
         }
 
@@ -1235,6 +1277,7 @@
             });
         });
 
+        ajustarCajaExactaPlano();
         reconstruirFlotaMaster();
         renderSidebar();
         cargarPosicionesDesdeNube();
