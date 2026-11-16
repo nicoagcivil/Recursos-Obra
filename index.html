@@ -47,16 +47,13 @@
             z-index: 50;
             opacity: 0.9;
         }
-        /* Halo blanco sutil alrededor de la silueta para legibilidad sobre líneas negras del plano */
         .clean-silhouette {
             filter: drop-shadow(0px 0px 2px rgba(255, 255, 255, 0.95)) drop-shadow(0px 1px 1px rgba(255, 255, 255, 0.9));
         }
-        /* Letras negras sin fondo con leve contorno blanco para que no se pierdan en líneas del plano */
         .label-clean-black {
             color: #000000;
             text-shadow: 0px 0px 2px #ffffff, 0px 0px 3px #ffffff, 1px 1px 0px #ffffff, -1px -1px 0px #ffffff;
         }
-        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -136,9 +133,7 @@
             </div>
 
             <!-- Lista de Equipos Arrastrables -->
-            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto">
-                <!-- Se puebla dinámicamente -->
-            </div>
+            <div id="equipment-sidebar-list" class="flex-grow p-3 space-y-2 overflow-y-auto"></div>
             
             <div class="p-2.5 bg-slate-900/40 border-t border-slate-700/60 text-[10px] text-slate-400 text-center">
                 💡 Arrastra el icono al plano. Doble clic en el icono del plano para retirarlo.
@@ -212,7 +207,7 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Número de Interno / Nombre:</label>
-                    <input type="text" id="nuevo-interno" placeholder="Ej: CAM 01 AB" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <input type="text" id="nuevo-interno" placeholder="Ej: CAM 18 AB" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Empresa:</label>
@@ -247,6 +242,9 @@
                         <option value="Luminaria">Luminaria</option>
                     </select>
                 </div>
+                <p class="text-[10px] text-slate-400">
+                    ℹ️ El equipo se guardará en la nube para que todos los usuarios lo vean disponible.
+                </p>
             </div>
 
             <div class="flex gap-2 justify-end pt-2">
@@ -291,7 +289,7 @@
         const JSONBIN_ID = "6af21677ffd5d16053b46d8a";
         const JSONBIN_KEY = "$2a$10$ORO2OED6o5rcyO9LbWj/GufMO.UX8GcOKXxbB8Hev3OxWG0S599c.";
 
-        const equiposEstructura = {
+        const equiposBase = {
             "Camiones": {
                 "Fuera de Ruta Zoomlion": [
                     { interno: "CAM 01 AB", empresa: "AB" },
@@ -416,6 +414,9 @@
             }
         };
 
+        // Lista persistente de equipos añadidos desde la web (se sincroniza en JSONBin)
+        let equiposCustomList = [];
+
         function getIconDataForEquipo(sub) {
             const n = sub.toLowerCase();
             if (n.includes("cargadora")) return { type: "img", src: "cargadora.jpg", fallbackIcon: "fa-dumpster" };
@@ -515,9 +516,13 @@
         }
 
         let flotaMaster = [];
+        let equiposEstructura = {};
 
         function reconstruirFlotaMaster() {
+            // Clonar estructura base para no duplicar al recargar desde la nube
+            equiposEstructura = JSON.parse(JSON.stringify(equiposBase));
             flotaMaster.length = 0;
+
             let idCounter = 1;
             Object.keys(equiposEstructura).forEach(cat => {
                 Object.keys(equiposEstructura[cat]).forEach(sub => {
@@ -528,9 +533,34 @@
                             sub: sub,
                             interno: eq.interno,
                             empresa: eq.empresa,
+                            isCustom: false,
                             iconData: getIconDataForEquipo(sub)
                         });
                     });
+                });
+            });
+
+            // Incorporar los equipos creados dinámicamente desde la web (con su ID único fijo)
+            equiposCustomList.forEach(customEq => {
+                if (!equiposEstructura[customEq.cat]) {
+                    equiposEstructura[customEq.cat] = {};
+                }
+                if (!equiposEstructura[customEq.cat][customEq.sub]) {
+                    equiposEstructura[customEq.cat][customEq.sub] = [];
+                }
+                equiposEstructura[customEq.cat][customEq.sub].push({
+                    interno: customEq.interno,
+                    empresa: customEq.empresa
+                });
+
+                flotaMaster.push({
+                    id: customEq.id,
+                    cat: customEq.cat,
+                    sub: customEq.sub,
+                    interno: customEq.interno,
+                    empresa: customEq.empresa,
+                    isCustom: true,
+                    iconData: getIconDataForEquipo(customEq.sub)
                 });
             });
         }
@@ -665,7 +695,7 @@
             document.getElementById('modal-add-equip').classList.remove('flex');
         }
 
-        function registrarYUbicarEquipoNuevo() {
+        async function registrarYUbicarEquipoNuevo() {
             const internoInput = document.getElementById('nuevo-interno').value.trim();
             const empresaInput = document.getElementById('nuevo-empresa').value;
             const tipoInput = document.getElementById('nuevo-tipo').value;
@@ -688,27 +718,38 @@
                 categoriaPrincipal = "EquiposAuxiliares";
             }
 
-            if (!equiposEstructura[categoriaPrincipal][tipoInput]) {
-                equiposEstructura[categoriaPrincipal][tipoInput] = [];
-            }
+            // Generar un ID único permanente basado en timestamp
+            const customId = `custom_${Date.now()}`;
 
-            equiposEstructura[categoriaPrincipal][tipoInput].push({
+            equiposCustomList.push({
+                id: customId,
+                cat: categoriaPrincipal,
+                sub: tipoInput,
                 interno: internoInput,
                 empresa: empresaInput
             });
 
             reconstruirFlotaMaster();
-            
-            const equipoCreado = flotaMaster.find(e => e.interno === internoInput && e.empresa === empresaInput && e.sub === tipoInput);
-            if (equipoCreado) {
-                stateEquipments[equipoCreado.id] = { x: 50, y: 50, estado: 'operativo' };
-            }
+            stateEquipments[customId] = { x: 50, y: 50, estado: 'operativo' };
 
             cerrarModalAgregarEquipo();
             document.getElementById('nuevo-interno').value = '';
             renderSidebar();
             renderPlacedEquipments();
-            showToast(`✅ ${tipoInput} (${internoInput}) agregado y ubicado`);
+
+            // Guardar automáticamente en la nube para que quede disponible para todos
+            await guardarPosicionesManual();
+            showToast(`✅ ${internoInput} guardado en la nube`);
+        }
+
+        async function eliminarEquipoCustom(customId) {
+            if (!confirm("¿Eliminar este equipo personalizado definitivamente?")) return;
+            equiposCustomList = equiposCustomList.filter(e => e.id !== customId);
+            delete stateEquipments[customId];
+            reconstruirFlotaMaster();
+            renderSidebar();
+            renderPlacedEquipments();
+            await guardarPosicionesManual();
         }
 
         async function cargarPosicionesDesdeNube() {
@@ -720,7 +761,15 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data.record && typeof data.record === 'object') {
-                        stateEquipments = data.record;
+                        // Soporte tanto para el formato nuevo { posiciones, equiposCustom } como el anterior directo
+                        if (data.record.posiciones) {
+                            stateEquipments = data.record.posiciones || {};
+                            equiposCustomList = Array.isArray(data.record.equiposCustom) ? data.record.equiposCustom : [];
+                        } else {
+                            stateEquipments = data.record;
+                            equiposCustomList = [];
+                        }
+                        reconstruirFlotaMaster();
                         renderSidebar();
                         renderPlacedEquipments();
                         showToast("✅ Sincronizado correctamente");
@@ -735,13 +784,18 @@
         async function guardarPosicionesManual() {
             showToast("⏳ Guardando cambios en la nube...");
             try {
+                const payload = {
+                    posiciones: stateEquipments,
+                    equiposCustom: equiposCustomList
+                };
+
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
                     method: 'PUT',
                     headers: {
                         "Content-Type": "application/json",
                         "X-Master-Key": JSONBIN_KEY
                     },
-                    body: JSON.stringify(stateEquipments)
+                    body: JSON.stringify(payload)
                 });
 
                 if (res.ok) {
@@ -878,8 +932,12 @@
                 item.draggable = true;
                 item.dataset.id = eq.id;
 
+                const deleteCustomBtn = eq.isCustom 
+                    ? `<button type="button" onclick="event.stopPropagation(); eliminarEquipoCustom('${eq.id}')" class="text-red-400 hover:text-red-300 text-xs px-1.5" title="Eliminar equipo agregado"><i class="fa-solid fa-trash-can"></i></button>`
+                    : '';
+
                 item.innerHTML = `
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-2 overflow-hidden">
                         <div class="w-8 h-8 rounded-lg ${colorTheme.bg} border ${colorTheme.border} flex items-center justify-center text-white shrink-0 shadow p-1">
                             ${renderSidebarIconHTML(eq.iconData, "w-6 h-6")}
                         </div>
@@ -891,7 +949,10 @@
                             <div class="text-[10px] text-slate-400 truncate">${eq.sub}</div>
                         </div>
                     </div>
-                    <i class="fa-solid fa-grip-vertical text-slate-600 text-xs px-1"></i>
+                    <div class="flex items-center shrink-0">
+                        ${deleteCustomBtn}
+                        <i class="fa-solid fa-grip-vertical text-slate-600 text-xs px-1"></i>
+                    </div>
                 `;
 
                 item.addEventListener('dragstart', (e) => {
